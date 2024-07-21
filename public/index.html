@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clicky Flip Flip</title>
+    <style>
+        :root {
+            --player1-color: #4d613b;
+            --player2-color: #728448;
+            --background-color: #27301c;
+            --board-color: #27301c;
+            --board-border-color: #9fb060;
+            --tile-border-color: #ced7ab;
+            --territory-border-color: #27301c;
+            --text-color: #9fb060;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #landing {
+            display: block;
+            text-align: center;
+        }
+        #game {
+            display: none;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(20, 30px);
+            grid-template-rows: repeat(20, 30px);
+            background-color: var(--board-color);
+            gap: 1px;
+            position: relative;
+            border: 5px solid var(--board-border-color);
+            border-radius: 5px;
+        }
+        .tile {
+            width: 30px;
+            height: 30px;
+            background-color: grey;
+            border: 1px solid var(--tile-border-color);
+            box-sizing: border-box;
+            border-radius: 2px;
+            transition: transform 1s;
+            position: relative; /* To position the lock icon */
+        }
+        .tile:hover {
+            filter: brightness(1.2);
+            cursor: pointer;
+        }
+        .tile.player1 {
+            background-color: var(--player1-color);
+        }
+        .tile.player2 {
+            background-color: var(--player2-color);
+        }
+        .flipped {
+            animation: flip 500ms ease-in-out;
+        }
+        @keyframes flip {
+            0% {
+                transform: rotateY(0) scale(1);
+                transform-origin: center;
+            }
+            20% {
+                transform: rotateY(0) scale(1.15);
+                transform-origin: center;
+            }
+            30% {
+                transform: rotateY(0) scale(1.15);
+                transform-origin: center;
+            }
+            50% {
+                transform: rotateY(90deg) scale(1.15);
+                transform-origin: center;
+            }
+            70% {
+                transform: rotateY(180deg) scale(1.15);
+                transform-origin: center;
+            }
+            80% {
+                transform: rotateY(180deg) scale(1.15);
+                transform-origin: center;
+            }
+            100% {
+                transform: rotateY(180deg) scale(1);
+                transform-origin: center;
+            }
+        }
+        .territory-border {
+            position: absolute;
+            width: 155px; /* 100px for tiles + 4px for borders */
+            height: 155px; /* 100px for tiles + 4px for borders */
+            border: 3px solid var(--territory-border-color);
+            box-sizing: border-box;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+        .player-color-identifier {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        #scoreboard div {
+            display: flex;
+            align-items: center;
+        }
+        .players-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .lock-icon {
+            position: absolute;
+            top: 6px;
+            right: 7px;
+            font-size: 12px;
+            color: black;
+            cursor: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="landing" class="container">
+        <h1>Clicky Flip Flip</h1>
+        <input type="text" id="playerName" placeholder="Enter your name" />
+        <button id="joinButton">Join</button>
+    </div>
+    <div id="game" class="container">
+        <h1>Clicky Flip Flip</h1>
+        <p id="turnIndicator">Waiting for players...</p>
+        <select id="themeSelect"></select>
+        <div id="scoreboard">
+            <h2>Scoreboard</h2>
+            <div class="players-container">
+                <div id="youContainer">
+                    <div class="player-color-identifier" id="youColor"></div>
+                    <p id="youScore">You: 0</p>
+                </div>
+                <div id="opponentContainer">
+                    <div class="player-color-identifier" id="opponentColor"></div>
+                    <p id="opponentScore">Opponent: 0</p>
+                </div>
+            </div>
+        </div>
+        <div id="board" class="board"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+    <script>
+        window.onload = function() {
+            document.getElementById('playerName').focus();
+        };
+    </script>
+</body>
+</html>

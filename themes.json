@@ -1,0 +1,64 @@
+{
+    "themes": {
+        "Forest": {
+            "backgroundColor": "#27301c",
+            "textColor": "#9fb060",
+
+            "player1Color": "#4d613b",
+            "player2Color": "#728448",
+            "boardBorderColor": "#9fb060",
+
+            "boardColor": "#27301c",
+            "tileBorderColor": "#ced7ab",
+            "territoryBorderColor": "#27301c"
+        },
+        "Aquatic": {
+            "backgroundColor": "#1b292c",
+            "textColor": "azure",
+
+            "player1Color": "#446a69",
+            "player2Color": "#69a398",
+            "boardBorderColor": "#446a69",
+
+            "boardColor": "#446a69",
+            "tileBorderColor": "#94e0c7",
+            "territoryBorderColor": "#1b292c"
+        },
+        "Dunes": {
+            "backgroundColor": "#a79368",
+            "textColor": "#23201a",
+
+            "player1Color": "#3e3729",
+            "player2Color": "#776b4b",
+            "boardBorderColor": "#23201a",
+
+            "boardColor": "#23201a",
+            "tileBorderColor": "#a79368",
+            "territoryBorderColor": "#23201a"
+        },
+        "NES": {
+            "backgroundColor": "#e5e5e5",
+            "textColor": "#0d0c0c",
+
+            "player1Color": "#0d0c0c",
+            "player2Color": "#a5a2a2",
+            "boardBorderColor": "#0d0c0c",
+
+            "boardColor": "#dd2020",
+            "tileBorderColor": "#dd2020",
+            "territoryBorderColor": "#dd2020"
+        },
+        "GameBoy": {
+            "backgroundColor": "#acc154",
+            "textColor": "#0f380f",
+
+            "player1Color": "#306230",
+            "player2Color": "#8bac0f",
+            "boardBorderColor": "#0f380f",
+
+            "boardColor": "#9bbc0f",
+            "tileBorderColor": "#0f380f",
+            "territoryBorderColor": "#0f380f"
+        }
+    }
+}
