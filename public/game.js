@@ -1,19 +1,20 @@
 let board;
-let player;
-let currentPlayer;
-let opponent;
-let waitingForOpponent = false;
+let player = {};
+let currentPlayerNumber;
+let waitingForOpponent = true;
 let lastFlippedTile = null; // Track the last flipped tile
 let captureQueue = []; // Queue to manage capture groups
 let animating = false; // Flag to indicate if an animation is in progress
 let flipDuration = 500; // Duration of the flip animation in milliseconds
-
+let playerNumberEnum = {};
+let themes = {};
 const socket = io();
 
 // Fetch CSS variables
 const rootStyles = getComputedStyle(document.documentElement);
 let player1Color = rootStyles.getPropertyValue('--player1-color').trim();
 let player2Color = rootStyles.getPropertyValue('--player2-color').trim();
+document.styleSheets[0].insertRule(`.flipped { animation: flip ${flipDuration}ms ease-in-out; }`, 0); // Update flip duration dynamically
 
 // DOM elements
 const landingPage = document.getElementById('landing');
@@ -24,13 +25,18 @@ const turnIndicator = document.getElementById('turnIndicator');
 const playerList = document.getElementById('playerList');
 const themeSelect = document.getElementById('themeSelect');
 
-// Fetch themes from the server on connection
-socket.on('connect', () => {
-    socket.emit('requestThemes');
+
+socket.on('playerDisconnected', (players) => {
+    updateScores(players);
+    document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
+    document.getElementById('opponentColor').style.backgroundColor = 'black';
 });
 
 // Listen for themes from the server
-socket.on('receiveThemes', (themes) => {
+socket.on('receiveThemesAndEnums', (data) => {
+    themes = data.themes;
+    playerNumberEnum = data.playerNumberEnum;
+
     Object.keys(themes).forEach(theme => {
         const option = document.createElement('option');
         option.value = theme;
@@ -43,7 +49,7 @@ socket.on('receiveThemes', (themes) => {
 joinButton.addEventListener('click', () => {
     const playerName = playerNameInput.value.trim();
     if (playerName) {
-        socket.emit('join', {name: playerName, player1Color, player2Color});
+        socket.emit('join', {name: playerName});
         landingPage.style.display = 'none';
         gamePage.style.display = 'block';
     }
@@ -52,51 +58,54 @@ joinButton.addEventListener('click', () => {
 // Event listener for theme selection
 themeSelect.addEventListener('change', (event) => {
     const selectedTheme = event.target.value;
-    socket.emit('requestThemeChange', { theme: selectedTheme });
+    socket.emit('requestThemeChange', { playerNumber: player.playerNumber, theme: selectedTheme });
 });
 
 // Apply theme to the client
-function applyTheme(theme) {
-    player1Color = theme.player1Color;
-    player2Color = theme.player2Color;
-    document.documentElement.style.setProperty('--player1-color', theme.player1Color);
-    document.documentElement.style.setProperty('--player2-color', theme.player2Color);
-    document.documentElement.style.setProperty('--background-color', theme.backgroundColor);
-    document.documentElement.style.setProperty('--board-color', theme.boardColor);
-    document.documentElement.style.setProperty('--board-border-color', theme.boardBorderColor);
-    document.documentElement.style.setProperty('--tile-border-color', theme.tileBorderColor);
-    document.documentElement.style.setProperty('--territory-border-color', theme.territoryBorderColor);
-    document.documentElement.style.setProperty('--text-color', theme.textColor);
+function applyTheme(players) {
+    const selectedThemeName = Object.values(players).find(p => p.playerNumber === player.playerNumber).theme;
+    const selectedTheme = themes[selectedThemeName];
 
-    // Update the scoreboard colors
-    document.getElementById('youColor').style.backgroundColor = player === 'player1' ? player1Color : player2Color;
-    document.getElementById('opponentColor').style.backgroundColor = player === 'player1' ? player2Color : player1Color;
+    player1Color = selectedTheme.player1Color;
+    player2Color = selectedTheme.player2Color;
+    document.documentElement.style.setProperty('--player1-color', selectedTheme.player1Color);
+    document.documentElement.style.setProperty('--player2-color', selectedTheme.player2Color);
+    document.documentElement.style.setProperty('--background-color', selectedTheme.backgroundColor);
+    document.documentElement.style.setProperty('--board-color', selectedTheme.boardColor);
+    document.documentElement.style.setProperty('--board-border-color', selectedTheme.boardBorderColor);
+    document.documentElement.style.setProperty('--tile-border-color', selectedTheme.tileBorderColor);
+    document.documentElement.style.setProperty('--territory-border-color', selectedTheme.territoryBorderColor);
+    document.documentElement.style.setProperty('--text-color', selectedTheme.textColor);
+
+    // update youColor and opponentColor
+    document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? selectedTheme.player1Color : selectedTheme.player2Color;
+    document.getElementById('opponentColor').style.backgroundColor = player.playerNumber === 1 ? selectedTheme.player2Color : selectedTheme.player1Color;
+
+    renderBoard();
 }
 
 // Listen for theme change confirmation from server
-socket.on('themeChange', (theme) => {
-    applyTheme(theme);
-    renderBoard();
+socket.on('themeChange', (data) => {
+    const { playerNumber, players } = data;
+    if (playerNumber !== player.playerNumber) {return;}
+
+    applyTheme(players);
 });
 
 // Listen for board initialization from server
 socket.on('initializeBoard', (data) => {
     board = data.board;
-    currentPlayer = data.currentPlayer;
+    currentPlayerNumber = data.currentPlayerNumber;
+    const players = data.players;
     renderBoard();
-    updateScores(data.scores);
+    updateScores(players);
 });
 
 // Listen for player assignment
 socket.on('assignPlayer', (data) => {
     player = data.player;
-    opponent = player === 'player1' ? 'player2' : 'player1';
     waitingForOpponent = data.waitingForOpponent;
     updateTurnIndicator();
-
-    // Update the scoreboard colors
-    document.getElementById('youColor').style.backgroundColor = player === 'player1' ? player1Color : player2Color;
-    document.getElementById('opponentColor').style.backgroundColor = player === 'player1' ? player2Color : player1Color;
 });
 
 // Function to render the board
@@ -106,10 +115,10 @@ function renderBoard() {
 
     // Render tiles
     board.forEach((row, x) => {
-        row.forEach((tilePlayer, y) => {
+        row.forEach((tileOwner, y) => {
             const tileElement = document.createElement('div');
             tileElement.className = 'tile';
-            tileElement.style.backgroundColor = tilePlayer === 'player1' ? player1Color : player2Color;
+            tileElement.style.backgroundColor = tileOwner === 1 ? player1Color : player2Color;
             tileElement.dataset.x = x;
             tileElement.dataset.y = y;
             tileElement.addEventListener('click', () => handleTileClick(x, y));
@@ -139,8 +148,7 @@ function renderBoard() {
 }
 
 function handleTileClick(x, y) {
-    if (player === currentPlayer && board[x][y] !== player) {
-        console.log('player:', player);
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
         // Prevent flipping the last flipped tile
         if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
             return;
@@ -150,8 +158,8 @@ function handleTileClick(x, y) {
 }
 
 // Listen for turn updates from server
-socket.on('turn', (newCurrentPlayer) => {
-    currentPlayer = newCurrentPlayer;
+socket.on('turn', (newCurrentPlayerNumber) => {
+    currentPlayerNumber = newCurrentPlayerNumber;
     waitingForOpponent = false;
     updateTurnIndicator();
 });
@@ -163,7 +171,7 @@ async function flipTile(x, y, player) {
         if (tileElement) {
             tileElement.classList.add('flipped');
             setTimeout(() => {
-                tileElement.style.backgroundColor = player === 'player1' ? player1Color : player2Color;
+                tileElement.style.backgroundColor = player === 1 ? player1Color : player2Color;
             }, (flipDuration * 0.5)); // Change color at the halfway point of the animation
             setTimeout(() => {
                 tileElement.classList.remove('flipped');
@@ -183,13 +191,11 @@ async function flipGroup(tiles, player) {
 
 // Listen for updateGame event
 socket.on('updateGame', async (data) => {
-    const {board: newBoard, scores, currentPlayer: newCurrentPlayer, lastFlipped, captureGroups} = data;
+    const {board: newBoard, players, currentPlayerNumber: newCurrentPlayerNumber, lastFlipped, captureGroups} = data;
     board = newBoard;
-    console.log('board:', board);
-    console.log('newBoard[lastFlipped.x][lastFlipped.y]:', newBoard[lastFlipped.x][lastFlipped.y]);
-    currentPlayer = newCurrentPlayer;
+    currentPlayerNumber = newCurrentPlayerNumber;
     lastFlippedTile = lastFlipped; // Update the last flipped tile
-    updateScores(scores);
+    updateScores(players);
 
     // Flip the last flipped tile first
     await flipTile(lastFlipped.x, lastFlipped.y, newBoard[lastFlipped.x][lastFlipped.y]);
@@ -219,18 +225,17 @@ socket.on('spectator', () => {
 
 // Listen for player list update
 socket.on('updatePlayerList', (players) => {
-    console.log('players:', players);
-    const you = players.find(p => p.id === socket.id);
-    const opponentPlayer = players.find(p => p.id !== socket.id);
+    const you = Object.values(players).find(p => p.id === socket.id);
+    const opponent = Object.values(players).find(p => p.id !== socket.id);
 
     if (you) {
-        document.getElementById('youColor').style.backgroundColor = player === 'player1' ? player1Color : player2Color;
-        document.getElementById('youScore').textContent = `You: ${you.score || 0}`;
+        document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
+        document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}`;
     }
 
-    if (opponentPlayer) {
-        document.getElementById('opponentColor').style.backgroundColor = player === 'player1' ? player2Color : player1Color;
-        document.getElementById('opponentScore').textContent = `Opponent: ${opponentPlayer.score || 0}`;
+    if (opponent) {
+        document.getElementById('opponentColor').style.backgroundColor = player.playerNumber === 1 ? player2Color : player1Color;
+        document.getElementById('opponentScore').textContent = `Opponent: ${opponent.score || 0}`;
     }
 });
 
@@ -238,7 +243,7 @@ socket.on('updatePlayerList', (players) => {
 function updateTurnIndicator() {
     if (waitingForOpponent) {
         turnIndicator.textContent = "Waiting for an opponent to join...";
-    } else if (player === currentPlayer) {
+    } else if (player.playerNumber === currentPlayerNumber) {
         turnIndicator.textContent = "It's your turn!";
     } else {
         turnIndicator.textContent = "Waiting for opponent's turn...";
@@ -246,19 +251,18 @@ function updateTurnIndicator() {
 }
 
 // Function to update scores
-function updateScores(scores) {
-    if (scores) {
-        const youScore = player === 'player1' ? scores.player1Score : scores.player2Score;
-        const opponentScore = player === 'player1' ? scores.player2Score : scores.player1Score;
-        document.getElementById('youScore').textContent = `You: ${youScore}`;
-        document.getElementById('opponentScore').textContent = `Opponent: ${opponentScore}`;
+function updateScores(players) {
+    if (players.length < 2) {
+        //reset scores
+        document.getElementById('youScore').textContent = `${player.name}: 0`;
+        document.getElementById('opponentScore').textContent = `Opponent: 0`;
+        renderBoard();
+        return;
+    } else if (players.player1 && players.player2) {
+        const you = Object.values(players).find(p => p.id === socket.id);
+        const opponent = Object.values(players).find(p => p.id !== socket.id);
+
+        document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}`;
+        document.getElementById('opponentScore').textContent = `Opponent: ${opponent.score}`;
     }
 }
-
-// Initial connection to request the board
-window.onload = () => {
-    socket.emit('requestBoard');
-};
-
-// Update flip duration dynamically
-document.styleSheets[0].insertRule(`.flipped { animation: flip ${flipDuration}ms ease-in-out; }`, 0);

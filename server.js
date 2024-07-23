@@ -11,77 +11,79 @@ app.use(express.static('public'));
 
 // Board setup
 const themes = JSON.parse(fs.readFileSync('themes.json')).themes;
+const playerNumberEnum = JSON.parse(fs.readFileSync('playerNumberEnum.json')).playerNumberEnum;
 
 let board = Array(20).fill().map(() => Array(20).fill(null));
-let currentPlayer = 'player1';
+let currentPlayerNumber = 1;
+let totalPlayers = 2; // for toggling turns between 2 players. Can support more players
 let lastFlippedTile = null; // Track the last flipped tile
 const players = {
-    player1: {id: null, score: 0},
-    player2: {id: null, score: 0}
+    player1: {id: null, score: 0, playerNumber: 1, theme: 'Forest'},
+    player2: {id: null, score: 0, playerNumber: 2, theme: 'Forest'}
 };
-let player1Color;
-let player2Color;
-
 // Initialize board with a checkerboard pattern of 5x5 territories
 function initializeBoard() {
     for (let i = 0; i < 20; i += 5) {
         for (let j = 0; j < 20; j += 5) {
-            const color = (i / 5 + j / 5) % 2 === 0 ? 'player1' : 'player2';
+            const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
+
             for (let x = i; x < i + 5; x++) {
                 for (let y = j; y < j + 5; y++) {
-                    board[x][y] = color;
+                    board[x][y] = playerOwner;
                 }
             }
         }
     }
 }
 
-function calculateScores(flippedTiles, player) {
-    players[player].score += flippedTiles.length;
-}
-
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('requestThemes', () => {
-        socket.emit('receiveThemes', themes);
-    });
+    socket.emit('receiveThemesAndEnums', {themes, playerNumberEnum});
 
     socket.on('join', (data) => {
         const name = data.name;
-        player1Color = data.player1Color;
-        player2Color = data.player2Color;
         if (!players.player1.id) {
             players.player1.id = socket.id;
             players.player1.name = name;
-            socket.emit('assignPlayer', {player: 'player1', color: player1Color, currentPlayer, waitingForOpponent: !players.player2.id});
+            socket.emit('assignPlayer', {
+                player: {
+                    name,
+                    playerNumber: 1,
+                    score: 0,
+                    theme: 'Forest',
+                },
+                waitingForOpponent: !players.player2.id
+            });
         } else if (!players.player2.id) {
             players.player2.id = socket.id;
             players.player2.name = name;
-            socket.emit('assignPlayer', {player: 'player2', color: player2Color, currentPlayer, waitingForOpponent: false});
-            io.emit('turn', currentPlayer); // Notify both players that the game can start
+            socket.emit('assignPlayer', {
+                player: {
+                    name,
+                    playerNumber: 2,
+                    score: 0,
+                    theme: 'Forest',
+                },
+                waitingForOpponent: false
+            });
+            io.emit('turn', currentPlayerNumber); // Notify both players that the game can start
         } else {
             socket.emit('spectator');
         }
 
+        totalPlayers = Object.keys(players).filter(player => players[player].id).length;
         updatePlayerList();
         initializeBoard();
-        socket.emit('initializeBoard', {board, currentPlayer, scores: {player1Score: players.player1.score, player2Score: players.player2.score}});
+        socket.emit('initializeBoard', {board, currentPlayerNumber, players});
     });
 
     socket.on('requestThemeChange', (data) => {
-        const { theme } = data;
+        const { playerNumber, theme } = data;
+
         if (themes[theme]) {
-            player1Color = themes[theme].player1Color;
-            player2Color = themes[theme].player2Color;
-            io.emit('themeChange', themes[theme]);
-            updatePlayerList();
-            initializeBoard(); // Reinitialize the board with new colors
-        } else {
-            player1Color = themes['Forest'].player1Color;
-            player2Color = themes['Forest'].player2Color;
-            socket.emit('themeChange', themes['Forest']); // Fallback to default theme
-            updatePlayerList();
+            players[playerNumberEnum[playerNumber]].theme = theme
+            io.emit('themeChange', {playerNumber, players});
         }
     });
 
@@ -91,33 +93,45 @@ io.on('connection', (socket) => {
         } else if (players.player2.id === socket.id) {
             delete players.player2.id;
         }
+        totalPlayers = Object.keys(players).filter(player => players[player].id).length;
+        resetPlayerScores();
         updatePlayerList();
+        socket.emit('playerDisconnected', players);
     });
+
+    function calculatePlayerScore(flippedTiles, player) {
+        const playerKey = playerNumberEnum[player.playerNumber];
+        players[playerKey].score += flippedTiles.length;
+    }
+
+    function resetPlayerScores() {
+        Object.keys(players).map(player => players[player].score = 0);
+    }
 
     socket.on('move', async (data) => {
         const {player, x, y} = data;
 
-        if (player === currentPlayer && board[x][y] !== player) {
-            board[x][y] = player;  // Use player identifier instead of color
+        if (player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
+            board[x][y] = player.playerNumber;  // Use player identifier instead of color
             const captureGroups = [];
-            let flippedTiles = captureTiles(x, y, player); // Capture logic
+            let flippedTiles = captureTiles(x, y, player.playerNumber); // Capture logic
 
             while (flippedTiles.length > 0) {
                 captureGroups.push(flippedTiles);
                 const newFlippedTiles = [];
                 flippedTiles.forEach(tile => {
-                    newFlippedTiles.push(...captureTiles(tile.x, tile.y, player));
+                    newFlippedTiles.push(...captureTiles(tile.x, tile.y, player.playerNumber));
                 });
                 flippedTiles = newFlippedTiles;
             }
 
-            calculateScores([...(captureGroups.flat() || []), {x, y}], player);
+            calculatePlayerScore([...(captureGroups.flat() || []), {x, y}], player);
             lastFlippedTile = {x, y}; // Update the last flipped tile
 
             io.emit('updateGame', {
                 board,
-                scores: {player1Score: players.player1.score, player2Score: players.player2.score},
-                currentPlayer,
+                players,
+                currentPlayerNumber,
                 lastFlipped: lastFlippedTile, // Send the last flipped tile info
                 captureGroups
             });
@@ -127,10 +141,14 @@ io.on('connection', (socket) => {
                 await new Promise(resolve => setTimeout(resolve, 500)); // Wait for the animation to complete
             }
 
-            currentPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
-            io.emit('turn', currentPlayer);
+            currentPlayerNumber = togglePlayerTurn();
+            io.emit('turn', currentPlayerNumber);
         }
     });
+
+    function togglePlayerTurn() {
+        return (currentPlayerNumber % totalPlayers) + 1; // For two players, it will toggle between 1 and 2
+    }
 
     function captureTiles(x, y, color) {
         const directions = [
@@ -146,7 +164,6 @@ io.on('connection', (socket) => {
             const newY = y + dir.dy;
             if (isValidTile(newX, newY) && board[newX][newY] !== color) {
                 if (isSurrounded(newX, newY, color)) {
-                    console.log(`Capturing tile at (${newX}, ${newY})`);
                     board[newX][newY] = color;
                     capturedTiles.push({x: newX, y: newY});
                 }
@@ -181,7 +198,6 @@ io.on('connection', (socket) => {
         const playerList = [];
         if (players.player1.id) playerList.push(players.player1);
         if (players.player2.id) playerList.push(players.player2);
-        console.log('playerList:', playerList);
         io.emit('updatePlayerList', playerList);
     }
 });

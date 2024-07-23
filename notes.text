@@ -1,0 +1,67 @@
+
+game state notes
+1. board: 2D array, each cell has a 1 or 2 indicating ownership
+2. players: array of player objects
+    example:
+    players = [
+        {
+            name,
+            playerNumber: 1,
+            score: 0,
+            theme: 'Forest',
+            isMyTurn: true,
+        },
+        {
+            name,
+            playerNumber: 2,
+            score: 0,
+            theme: 'Forest',
+            isMyTurn: false,
+        }
+    ]
+3. turn: playerNumber1 or playerNumber2
+4. score: found on each player object, updated by the server
+5. theme: defined in 'themes.json', selected theme found on each player object
+6. gameover: boolean, true if game is over
+7. winner: playerNumber of the winner
+
+when a player connects:
+    -they will send a message to the server with their name
+    -the server will add them to the players array
+    -if there are 2 players, the server will send a message to both players to start the game
+    -the server will send a message to the players with the board, their playerNumber, and the theme they are playing
+    -the server will send a message to the players with the current turn
+
+if a player changes their theme:
+    -the server will update the player object with the new theme
+    -the server will send a message to the players with the updated theme
+    -the client will update the theme if it is their player object
+
+when a player makes a move:
+    -the client will send a message to the server with the row and column of the move requested
+    -the server will update the board with the move if approved
+    -the server will send a message to the players with the updated board
+    -the server will send a message to the players with the updated turn
+    -the server will send a message to the players with the updated score
+    -the server will check if the game is over
+    -if the game is over, the server will send a message to the players with the winner
+
+when a player disconnects:
+    -the server will remove the player from the players array
+    -the server will send a message to the remaining player that the game is over
+    -the server will send a message to the remaining player with the winner
+
+when the game is over:
+    -the server will set gameover to true
+    -the server will set the winner to the playerNumber of the winner
+    -the server will send a message to the players with the winner
+
+when the game is reset:
+    -the server will reset the board
+    -the server will reset the players scores
+    -the server will set gameover to false
+    -the server will set the winner to null
+    -the server will send a message to the players with the updated board
+    -the server will send a message to the players with the updated scores
+    -the server will send a message to the players with the updated gameover
+    -the server will send a message to the players with the updated winner
