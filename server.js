@@ -12,8 +12,8 @@ app.use(express.static('public'));
 // Board setup
 const themes = JSON.parse(fs.readFileSync('themes.json')).themes;
 const playerNumberEnum = JSON.parse(fs.readFileSync('playerNumberEnum.json')).playerNumberEnum;
-
-let board = Array(20).fill().map(() => Array(20).fill(null));
+const boardSize = 20;
+let board = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
 let currentPlayerNumber = 1;
 let totalPlayers = 2; // for toggling turns between 2 players. Can support more players
 let lastFlippedTile = null; // Track the last flipped tile
@@ -23,8 +23,8 @@ const players = {
 };
 // Initialize board with a checkerboard pattern of 5x5 territories
 function initializeBoard() {
-    for (let i = 0; i < 20; i += 5) {
-        for (let j = 0; j < 20; j += 5) {
+    for (let i = 0; i < boardSize; i += 5) {
+        for (let j = 0; j < boardSize; j += 5) {
             const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
 
             for (let x = i; x < i + 5; x++) {
