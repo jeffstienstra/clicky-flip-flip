@@ -26,10 +26,15 @@ const playerList = document.getElementById('playerList');
 const themeSelect = document.getElementById('themeSelect');
 
 
-socket.on('playerDisconnected', (players) => {
-    updateScores(players);
-    document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
+socket.on('playerDisconnected', (data) => {
+    board = data.board;
+    updateScores(data.players);
+    waitingForOpponent = data.waitingForOpponent;
+    lastFlippedTile = null; // to remove the lock icon when the game resets
+    updateTurnIndicator();
     document.getElementById('opponentColor').style.backgroundColor = 'black';
+
+    renderBoard();
 });
 
 // Listen for themes from the server
@@ -230,13 +235,13 @@ socket.on('updatePlayerList', (players) => {
 
     if (you) {
         document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
-        document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}`;
     }
 
     if (opponent) {
         document.getElementById('opponentColor').style.backgroundColor = player.playerNumber === 1 ? player2Color : player1Color;
-        document.getElementById('opponentScore').textContent = `Opponent: ${opponent.score || 0}`;
     }
+
+    updateScores(players)
 });
 
 // Function to update turn indicator
@@ -252,17 +257,16 @@ function updateTurnIndicator() {
 
 // Function to update scores
 function updateScores(players) {
-    if (players.length < 2) {
-        //reset scores
-        document.getElementById('youScore').textContent = `${player.name}: 0`;
-        document.getElementById('opponentScore').textContent = `Opponent: 0`;
-        renderBoard();
-        return;
-    } else if (players.player1 && players.player2) {
-        const you = Object.values(players).find(p => p.id === socket.id);
-        const opponent = Object.values(players).find(p => p.id !== socket.id);
+    const you = Object.values(players).find(p => p.id === socket.id);
+    const opponent = Object.values(players).find(p => p.id !== socket.id);
 
+    if (you) {
         document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}`;
-        document.getElementById('opponentScore').textContent = `Opponent: ${opponent.score}`;
+    }
+
+    if (opponent) {
+        document.getElementById('opponentScore').textContent = `Opponent: ${opponent.score || 0}`;
+    } else {
+        document.getElementById('opponentScore').textContent = `Opponent: 0`; // Reset opponent score if no opponent
     }
 }

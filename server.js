@@ -53,8 +53,12 @@ io.on('connection', (socket) => {
                     score: 0,
                     theme: 'Forest',
                 },
-                waitingForOpponent: !players.player2.id
+                waitingForOpponent: totalPlayers < 2
             });
+
+            if (players.player1.id && players.player2.id) {
+                io.emit('turn', currentPlayerNumber); // Notify both players that the game can start
+            }
         } else if (!players.player2.id) {
             players.player2.id = socket.id;
             players.player2.name = name;
@@ -65,9 +69,11 @@ io.on('connection', (socket) => {
                     score: 0,
                     theme: 'Forest',
                 },
-                waitingForOpponent: false
+                waitingForOpponent: totalPlayers < 2
             });
-            io.emit('turn', currentPlayerNumber); // Notify both players that the game can start
+            if (players.player1.id && players.player2.id) {
+                io.emit('turn', currentPlayerNumber); // Notify both players that the game can start
+            }
         } else {
             socket.emit('spectator');
         }
@@ -88,15 +94,24 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        if (players.player1.id === socket.id) {
-            delete players.player1.id;
-        } else if (players.player2.id === socket.id) {
-            delete players.player2.id;
-        }
-        totalPlayers = Object.keys(players).filter(player => players[player].id).length;
         resetPlayerScores();
+
+        if (players.player1.id === socket.id) {
+            players.player1.id = null;
+            players.player2.name = null;
+            players.player2.theme = 'Forest';
+        } else if (players.player2.id === socket.id) {
+            players.player2.id = null;
+            players.player2.name = null;
+            players.player2.theme = 'Forest';
+        }
+
+        totalPlayers = Object.keys(players).filter(player => players[player].id).length;
+        lastFlippedTile = null; // to remove the lock icon when the game resets
+
         updatePlayerList();
-        socket.emit('playerDisconnected', players);
+        initializeBoard();
+        socket.broadcast.emit('playerDisconnected', {board, players, waitingForOpponent: true}); // emit only to remaining player(s)
     });
 
     function calculatePlayerScore(flippedTiles, player) {
