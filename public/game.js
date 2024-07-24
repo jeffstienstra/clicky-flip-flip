@@ -188,13 +188,11 @@ async function flipTile(x, y, player) {
     });
 }
 
-// Function to flip a group of tiles
-async function flipGroup(tiles, player) {
+async function flipTileGroup(tiles, player) {
     const flipPromises = tiles.map(({x, y}) => flipTile(x, y, player));
     await Promise.all(flipPromises);
 }
 
-// Listen for updateGame event
 socket.on('updateGame', async (data) => {
     const {board: newBoard, players, currentPlayerNumber: newCurrentPlayerNumber, lastFlipped, captureGroups} = data;
     board = newBoard;
@@ -216,7 +214,7 @@ socket.on('updateGame', async (data) => {
 
     // Sequentially animate each capture group
     for (const group of captureGroups) {
-        await flipGroup(group, newBoard[group[0].x][group[0].y]);
+        await flipTileGroup(group, newBoard[group[0].x][group[0].y]);
     }
 
     // Finally render the board

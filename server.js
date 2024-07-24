@@ -21,6 +21,7 @@ const players = {
     player1: {id: null, score: 0, playerNumber: 1, theme: 'Forest'},
     player2: {id: null, score: 0, playerNumber: 2, theme: 'Forest'}
 };
+
 // Initialize board with a checkerboard pattern of 5x5 territories
 function initializeBoard() {
     for (let i = 0; i < boardSize; i += 5) {
