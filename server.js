@@ -28,6 +28,12 @@ const cardinalDirections = [
     {dx: -1, dy: 0}, // Left
     {dx: 1, dy: 0}   // Right
 ];
+const diagonalDirections = [
+    {dx: -1, dy: -1}, // Top-left
+    {dx: -1, dy: 1},  // Bottom-left
+    {dx: 1, dy: -1},  // Top-right
+    {dx: 1, dy: 1}    // Bottom-right
+];
 
 // Initialize board with a checkerboard pattern of 5x5 territories
 function initializeBoard() {
@@ -167,7 +173,6 @@ io.on('connection', (socket) => {
                     initialFlips.push({x: newX, y: newY});
                 }
             });
-
             captureGroups.push(initialFlips);
 
             let flippedTiles = captureTiles(x, y, player.playerNumber);
@@ -202,7 +207,9 @@ io.on('connection', (socket) => {
 
     function captureTiles(x, y, playerNumber) {
         const capturedTiles = [];
-        cardinalDirections.forEach(dir => {
+        const allDirections = cardinalDirections.concat(diagonalDirections);
+
+        allDirections.forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
             if (isValidTile(newX, newY) && board[newX][newY] !== playerNumber) {
