@@ -21,6 +21,12 @@ const players = {
     player1: {id: null, score: 0, playerNumber: 1, theme: 'Forest'},
     player2: {id: null, score: 0, playerNumber: 2, theme: 'Forest'}
 };
+const cardinalDirections = [
+    {dx: 0, dy: -1}, // Up
+    {dx: 0, dy: 1},  // Down
+    {dx: -1, dy: 0}, // Left
+    {dx: 1, dy: 0}   // Right
+];
 
 // Initialize board with a checkerboard pattern of 5x5 territories
 function initializeBoard() {
@@ -115,8 +121,10 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('playerDisconnected', {board, players, waitingForOpponent: true}); // emit only to remaining player(s)
     });
 
-    function calculatePlayerScore(flippedTiles, player) {
+    function calculatePlayerScore(flippedTiles, validSelectedTiles, player) {
+        console.log('flippedTiles', flippedTiles);
         const playerKey = playerNumberEnum[player.playerNumber];
+        players[playerKey].score += validSelectedTiles.length;
         players[playerKey].score += flippedTiles.length;
     }
 
@@ -126,9 +134,25 @@ io.on('connection', (socket) => {
 
     socket.on('move', async (data) => {
         const {player, x, y} = data;
-
         if (player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
-            board[x][y] = player.playerNumber;  // Use player identifier instead of color
+            // map over validSelectedTiles and add the player's number to the board for each tile
+            const directions = [
+                {dx: 0, dy: 0}, // Center
+                {dx: 0, dy: -1}, // Up
+                {dx: 0, dy: 1},  // Down
+                {dx: -1, dy: 0}, // Left
+                {dx: 1, dy: 0},  // Right
+            ]
+            const validSelectedTiles = []; // valid tiles beneath cursor
+            directions.forEach(tile => {
+                const newX = x + tile.dx;
+                const newY = y + tile.dy;
+                if (isValidTile(newX, newY)  && board[newX][newY] !== player.playerNumber) {
+                    board[newX][newY] = player.playerNumber;
+                    validSelectedTiles.push({x: newX, y: newY});
+                }
+            });
+
             const captureGroups = [];
             let flippedTiles = captureTiles(x, y, player.playerNumber); // Capture logic
 
@@ -141,14 +165,14 @@ io.on('connection', (socket) => {
                 flippedTiles = newFlippedTiles;
             }
 
-            calculatePlayerScore([...(captureGroups.flat() || []), {x, y}], player);
+            calculatePlayerScore([...(captureGroups.flat() || [])], validSelectedTiles, player);
             lastFlippedTile = {x, y}; // Update the last flipped tile
 
             io.emit('updateGame', {
                 board,
                 players,
                 currentPlayerNumber,
-                lastFlipped: lastFlippedTile, // Send the last flipped tile info
+                lastFlipped: lastFlippedTile,
                 captureGroups
             });
 
@@ -166,21 +190,14 @@ io.on('connection', (socket) => {
         return (currentPlayerNumber % totalPlayers) + 1; // For two players, it will toggle between 1 and 2
     }
 
-    function captureTiles(x, y, color) {
-        const directions = [
-            {dx: 0, dy: -1}, // Up
-            {dx: 0, dy: 1},  // Down
-            {dx: -1, dy: 0}, // Left
-            {dx: 1, dy: 0}   // Right
-        ];
-
+    function captureTiles(x, y, playerNumber) {
         const capturedTiles = [];
-        directions.forEach(dir => {
+        cardinalDirections.forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
-            if (isValidTile(newX, newY) && board[newX][newY] !== color) {
-                if (isSurrounded(newX, newY, color)) {
-                    board[newX][newY] = color;
+            if (isValidTile(newX, newY) && board[newX][newY] !== playerNumber) {
+                if (isSurrounded(newX, newY, playerNumber)) {
+                    board[newX][newY] = playerNumber;
                     capturedTiles.push({x: newX, y: newY});
                 }
             }
@@ -188,18 +205,11 @@ io.on('connection', (socket) => {
         return capturedTiles;
     }
 
-    function isSurrounded(x, y, color) {
-        const directions = [
-            {dx: 0, dy: -1}, // Up
-            {dx: 0, dy: 1},  // Down
-            {dx: -1, dy: 0}, // Left
-            {dx: 1, dy: 0}   // Right
-        ];
-
-        const surroundingTiles = directions.filter(dir => {
+    function isSurrounded(x, y, playerNumber) {
+        const surroundingTiles = cardinalDirections.filter(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
-            return isValidTile(newX, newY) && board[newX][newY] === color;
+            return isValidTile(newX, newY) && board[newX][newY] === playerNumber;
         });
 
         // Check if the tile is surrounded on at least 3 sides

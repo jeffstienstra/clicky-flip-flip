@@ -25,6 +25,13 @@ const turnIndicator = document.getElementById('turnIndicator');
 const playerList = document.getElementById('playerList');
 const themeSelect = document.getElementById('themeSelect');
 
+const directions = [
+    {dx: 0, dy: 0}, // Center
+    {dx: 0, dy: -1}, // Up
+    {dx: 0, dy: 1},  // Down
+    {dx: -1, dy: 0}, // Left
+    {dx: 1, dy: 0}   // Right
+];
 
 socket.on('playerDisconnected', (data) => {
     board = data.board;
@@ -113,6 +120,50 @@ socket.on('assignPlayer', (data) => {
     updateTurnIndicator();
 });
 
+// Function to add event listeners to each tile
+function addTileHoverListeners(tileElement, x, y) {
+    tileElement.addEventListener('mouseenter', () => handleTileHover(x, y));
+    tileElement.addEventListener('mouseleave', () => handleTileHoverOut(x, y));
+}
+
+// Function to handle tile hover
+function handleTileHover(x, y) {
+    if (board[x][y] === player.playerNumber) {return;}
+
+    directions.forEach(dir => {
+        const newX = x + dir.dx;
+        const newY = y + dir.dy;
+        // do not add the 'tile-selector' class if the tile beneath the cursor (directions[0]) belongs to the player
+
+        if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
+            const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+            if (tileElement) {
+                tileElement.classList.add('tile-selector');
+            }
+        }
+    });
+}
+
+// Function to handle tile hover out
+function handleTileHoverOut(x, y) {
+    if (board[x][y] === player.playerNumber) {return;}
+
+    directions.forEach(dir => {
+        const newX = x + dir.dx;
+        const newY = y + dir.dy;
+        if (isValidTile(newX, newY)) {
+            const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+            if (tileElement) {
+                tileElement.classList.remove('tile-selector');
+            }
+        }
+    });
+}
+
+function isValidTile(x, y) {
+    return x >= 0 && x < board.length && y >= 0 && y < board[0].length;
+}
+
 // Function to render the board
 function renderBoard() {
     const boardElement = document.getElementById('board');
@@ -135,6 +186,9 @@ function renderBoard() {
                 lockIcon.textContent = '🔒'; // Unicode lock icon
                 tileElement.appendChild(lockIcon);
             }
+
+            tileElement.addEventListener('mouseenter', () => handleTileHover(x, y));
+            tileElement.addEventListener('mouseleave', () => handleTileHoverOut(x, y));
 
             boardElement.appendChild(tileElement);
         });
@@ -194,14 +248,11 @@ async function flipTileGroup(tiles, player) {
 }
 
 socket.on('updateGame', async (data) => {
-    const {board: newBoard, players, currentPlayerNumber: newCurrentPlayerNumber, lastFlipped, captureGroups} = data;
+    const {board: newBoard, players, lastFlipped, captureGroups} = data;
     board = newBoard;
-    currentPlayerNumber = newCurrentPlayerNumber;
+    currentPlayerNumber = data.currentPlayerNumber;
     lastFlippedTile = lastFlipped; // Update the last flipped tile
     updateScores(players);
-
-    // Flip the last flipped tile first
-    await flipTile(lastFlipped.x, lastFlipped.y, newBoard[lastFlipped.x][lastFlipped.y]);
 
     // Add the lock icon after the first tile flip completes
     const tileElement = document.querySelector(`.tile[data-x='${lastFlipped.x}'][data-y='${lastFlipped.y}']`);
