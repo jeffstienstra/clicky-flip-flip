@@ -1,46 +1,44 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
-const fs = require('fs');
 
 app.use(express.static('public'));
 
-// Board setup
-const themes = JSON.parse(fs.readFileSync('themes.json')).themes;
-const playerNumberEnum = JSON.parse(fs.readFileSync('playerNumberEnum.json')).playerNumberEnum;
-const boardSize = 20;
-let board = Array(boardSize).fill().map(() => Array(boardSize).fill(null));
-let currentPlayerNumber = 1;
-let totalPlayers = 2; // for toggling turns between 2 players. Can support more players
-let lastFlippedTile = null; // Track the last flipped tile
-const flipDuration = 500; // Duration of the flip animation in milliseconds
-const players = {
-    player1: {id: null, score: 0, playerNumber: 1, theme: 'Forest'},
-    player2: {id: null, score: 0, playerNumber: 2, theme: 'Forest'}
-};
-const cardinalDirections = [
+// Constants
+const BOARD_SIZE = 20;
+const FLIP_DURATION = 500; // Duration of the flip animation in milliseconds
+const MAX_PLAYERS_PER_GAME = 2;
+const CARDINAL_DIRECTIONS = [
     {dx: 0, dy: -1}, // Up
     {dx: 0, dy: 1},  // Down
     {dx: -1, dy: 0}, // Left
     {dx: 1, dy: 0}   // Right
 ];
-const diagonalDirections = [
+const DIAGONAL_DIRECTIONS = [
     {dx: -1, dy: -1}, // Top-left
     {dx: -1, dy: 1},  // Bottom-left
     {dx: 1, dy: -1},  // Top-right
     {dx: 1, dy: 1}    // Bottom-right
 ];
+const ALL_DIRECTIONS = CARDINAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
 
-// Initialize board with a checkerboard pattern of 5x5 territories
+// Load external data
+const themes = JSON.parse(fs.readFileSync('themes.json')).themes;
+const playerNumberEnum = JSON.parse(fs.readFileSync('playerNumberEnum.json')).playerNumberEnum;
+
+// Game state
+const games = {};
+
 function initializeBoard() {
-    for (let i = 0; i < boardSize; i += 5) {
-        for (let j = 0; j < boardSize; j += 5) {
+    const board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+    for (let i = 0; i < BOARD_SIZE; i += 5) {
+        for (let j = 0; j < BOARD_SIZE; j += 5) {
             const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
-
             for (let x = i; x < i + 5; x++) {
                 for (let y = j; y < j + 5; y++) {
                     board[x][y] = playerOwner;
@@ -48,6 +46,103 @@ function initializeBoard() {
             }
         }
     }
+    return board;
+}
+
+function createGame() {
+    const gameRoom = `game_${Object.keys(games).length + 1}`;
+    games[gameRoom] = {
+        board: initializeBoard(),
+        currentPlayerNumber: 1,
+        lastFlippedTile: null,
+        players: [],
+    };
+    return gameRoom;
+}
+
+function findOrCreateGameRoom() {
+    let gameRoom = Object.keys(games).find(room => games[room].players.length < MAX_PLAYERS_PER_GAME);
+    if (!gameRoom) {
+        gameRoom = createGame();
+    }
+    return gameRoom;
+}
+
+function getPlayerRoom(socketId) {
+    return Object.keys(games).find(room => games[room].players.some(p => p.id === socketId));
+}
+
+function addPlayerToGame(socket, name) {
+    const gameRoom = findOrCreateGameRoom();
+    const playerNumber = games[gameRoom].players.length + 1;
+    const player = {
+        id: socket.id,
+        name,
+        playerNumber,
+        score: 0,
+        theme: 'Forest'
+    };
+    games[gameRoom].players.push(player);
+    socket.join(gameRoom);
+    return {gameRoom, player};
+}
+
+function removePlayerFromGame(socketId) {
+    const gameRoom = getPlayerRoom(socketId);
+    if (gameRoom) {
+        games[gameRoom].players = games[gameRoom].players.filter(p => p.id !== socketId);
+        games[gameRoom].lastFlippedTile = null; // Remove lock icon when game resets
+        // if (games[gameRoom].players.length === 0) {
+        //     delete games[gameRoom];
+        // }
+    }
+    return gameRoom;
+}
+
+function calculatePlayerScore(flippedTiles, player, gameRoom) {
+    const playerInGame = games[gameRoom].players.find(p => p.id === player.id);
+    if (playerInGame) {
+        playerInGame.score += flippedTiles.length;
+    }
+}
+
+function resetPlayerScores(gameRoom) {
+    const game = games[gameRoom];
+    game?.players?.forEach(player => player.score = 0);
+}
+
+function togglePlayerTurn(game) {
+    return (game.currentPlayerNumber % MAX_PLAYERS_PER_GAME) + 1; // For two players, it will toggle between 1 and 2
+}
+
+function isValidTile(x, y) {
+    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
+}
+
+function isSurrounded(x, y, playerNumber, game) {
+    const surroundingTiles = CARDINAL_DIRECTIONS.filter(dir => {
+        const newX = x + dir.dx;
+        const newY = y + dir.dy;
+        return isValidTile(newX, newY) && game.board[newX][newY] === playerNumber;
+    });
+
+    // Check if the tile is surrounded on at least 3 sides
+    return surroundingTiles.length >= 3;
+}
+
+function captureTiles(x, y, playerNumber, game) {
+    const capturedTiles = [];
+    ALL_DIRECTIONS.forEach(dir => {
+        const newX = x + dir.dx;
+        const newY = y + dir.dy;
+        if (isValidTile(newX, newY) && game.board[newX][newY] !== playerNumber) {
+            if (isSurrounded(newX, newY, playerNumber, game)) {
+                game.board[newX][newY] = playerNumber;
+                capturedTiles.push({x: newX, y: newY});
+            }
+        }
+    });
+    return capturedTiles;
 }
 
 io.on('connection', (socket) => {
@@ -56,193 +151,112 @@ io.on('connection', (socket) => {
     socket.emit('receiveThemesAndEnums', {themes, playerNumberEnum});
 
     socket.on('join', (data) => {
-        const name = data.name;
-        currentPlayerNumber = 1; // Reset current player number
-        if (!players.player1.id) {
-            players.player1.id = socket.id;
-            players.player1.name = name;
-            socket.emit('assignPlayer', {
-                player: {
-                    name,
-                    playerNumber: 1,
-                    score: 0,
-                    theme: 'Forest',
-                },
-                waitingForOpponent: totalPlayers < 2
-            });
+        const {name} = data;
+        const {gameRoom, player} = addPlayerToGame(socket, name);
 
-            totalPlayers = Object.keys(players).filter(player => players[player].id).length;
-            initializeBoard();
-            io.emit('updateGame', {
-                board,
-                players,
-                currentPlayerNumber,
-                lastFlippedTile,
-                captureGroups: [], // Initially empty
-                waitingForOpponent: totalPlayers < 2
-            });
-        } else if (!players.player2.id) {
-            players.player2.id = socket.id;
-            players.player2.name = name;
-            socket.emit('assignPlayer', {
-                player: {
-                    name,
-                    playerNumber: 2,
-                    score: 0,
-                    theme: 'Forest',
-                },
-                waitingForOpponent: totalPlayers < 2
-            });
+        socket.emit('assignPlayer', {
+            player,
+            waitingForOpponent: games[gameRoom].players.length < MAX_PLAYERS_PER_GAME
+        });
 
-            totalPlayers = Object.keys(players).filter(player => players[player].id).length;
-            initializeBoard();
-            io.emit('updateGame', {
-                board,
-                players,
-                currentPlayerNumber,
-                lastFlippedTile,
-                captureGroups: [], // Initially empty
-                waitingForOpponent: totalPlayers < 2
+        io.to(gameRoom).emit('updateGame', {
+            board: games[gameRoom].board,
+            players: games[gameRoom].players,
+            currentPlayerNumber: games[gameRoom].currentPlayerNumber,
+            lastFlippedTile: games[gameRoom].lastFlippedTile,
+            captureGroups: [], // Initially empty
+            waitingForOpponent: games[gameRoom].players.length < MAX_PLAYERS_PER_GAME
+        });
+
+        if (games[gameRoom].players.length === MAX_PLAYERS_PER_GAME) {
+            io.to(gameRoom).emit('initializeBoard', {
+                board: games[gameRoom].board,
+                currentPlayerNumber: games[gameRoom].currentPlayerNumber,
+                players: games[gameRoom].players
             });
-        } else {
-            socket.emit('spectator');
         }
-
-        totalPlayers = Object.keys(players).filter(player => players[player].id).length;
-        updatePlayerList();
-        initializeBoard();
-        socket.emit('initializeBoard', {board, currentPlayerNumber, players});
     });
 
     socket.on('requestThemeChange', (data) => {
-        const { playerNumber, theme } = data;
+        const {playerNumber, theme} = data;
+        const gameRoom = getPlayerRoom(socket.id);
 
-        if (themes[theme]) {
-            players[playerNumberEnum[playerNumber]].theme = theme
-            io.emit('themeChange', {playerNumber, players});
+        if (themes[theme] && gameRoom) {
+            const player = games[gameRoom].players.find(p => p.playerNumber === playerNumber);
+            if (player) {
+                player.theme = theme;
+                io.to(gameRoom).emit('themeChange', {playerNumber, players: games[gameRoom].players});
+            }
         }
     });
 
     socket.on('disconnect', () => {
-        resetPlayerScores();
-
-        if (players.player1.id === socket.id) {
-            players.player1.id = null;
-            players.player2.name = null;
-            players.player2.theme = 'Forest';
-        } else if (players.player2.id === socket.id) {
-            players.player2.id = null;
-            players.player2.name = null;
-            players.player2.theme = 'Forest';
+        const gameRoom = removePlayerFromGame(socket.id);
+        if (gameRoom) {
+            resetPlayerScores(gameRoom);
+            games[gameRoom].board = initializeBoard(); // Reset the board
+            games[gameRoom].currentPlayerNumber = 1; // Reset the turn to player 1
+            io.to(gameRoom).emit('playerDisconnected', {
+                board: games[gameRoom].board,
+                players: games[gameRoom].players,
+                currentPlayerNumber: games[gameRoom].currentPlayerNumber,
+                waitingForOpponent: true
+            });
         }
-
-        totalPlayers = Object.keys(players).filter(player => players[player].id).length;
-        lastFlippedTile = null; // remove lock icon when game resets
-
-        updatePlayerList();
-        initializeBoard();
-        socket.broadcast.emit('playerDisconnected', {board, players, waitingForOpponent: true}); // emit only to remaining player(s)
     });
-
-    function calculatePlayerScore(flippedTiles, player) {
-        const playerKey = playerNumberEnum[player.playerNumber];
-        players[playerKey].score += flippedTiles.length;
-    }
-
-    function resetPlayerScores() {
-        Object.keys(players).map(player => players[player].score = 0);
-    }
 
     socket.on('move', async (data) => {
         const {player, x, y} = data;
-        if (player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
+        const gameRoom = getPlayerRoom(player.id);
+        const game = games[gameRoom];
+
+        if (player.playerNumber === game.currentPlayerNumber && game.board[x][y] !== player.playerNumber) {
             const directions = [
                 {dx: 0, dy: 0}, // Center
                 {dx: 0, dy: -1}, // Up
                 {dx: 0, dy: 1},  // Down
                 {dx: -1, dy: 0}, // Left
                 {dx: 1, dy: 0},  // Right
-            ]
+            ];
+
             const captureGroups = [];
             const initialFlips = []; // valid tiles beneath cursor
             directions.forEach(tile => {
                 const newX = x + tile.dx;
                 const newY = y + tile.dy;
-                if (isValidTile(newX, newY)  && board[newX][newY] !== player.playerNumber) {
-                    board[newX][newY] = player.playerNumber;
+                if (isValidTile(newX, newY) && game.board[newX][newY] !== player.playerNumber) {
+                    game.board[newX][newY] = player.playerNumber;
                     initialFlips.push({x: newX, y: newY});
                 }
             });
+
             captureGroups.push(initialFlips);
 
-            let flippedTiles = captureTiles(x, y, player.playerNumber);
+            let flippedTiles = captureTiles(x, y, player.playerNumber, game);
             while (flippedTiles.length > 0) {
                 captureGroups.push(flippedTiles);
                 const newFlippedTiles = [];
                 flippedTiles.forEach(tile => {
-                    newFlippedTiles.push(...captureTiles(tile.x, tile.y, player.playerNumber));
+                    newFlippedTiles.push(...captureTiles(tile.x, tile.y, player.playerNumber, game));
                 });
                 flippedTiles = newFlippedTiles;
             }
 
-            calculatePlayerScore([...(captureGroups.flat() || [])], player);
-            lastFlippedTile = {x, y}; // Update the last flipped tile
+            calculatePlayerScore([...(captureGroups.flat() || [])], player, gameRoom);
+            game.lastFlippedTile = {x, y}; // Update the last flipped tile
 
-            currentPlayerNumber = togglePlayerTurn();
+            game.currentPlayerNumber = togglePlayerTurn(game);
 
-            io.emit('updateGame', {
-                board,
-                players,
-                currentPlayerNumber,
-                lastFlippedTile,
+            io.to(gameRoom).emit('updateGame', {
+                board: game.board,
+                players: game.players,
+                currentPlayerNumber: game.currentPlayerNumber,
+                lastFlippedTile: game.lastFlippedTile,
                 captureGroups,
-                waitingForOpponent: totalPlayers < 2
+                waitingForOpponent: game.players.length < MAX_PLAYERS_PER_GAME
             });
         }
     });
-
-    function togglePlayerTurn() {
-        return (currentPlayerNumber % totalPlayers) + 1; // For two players, it will toggle between 1 and 2
-    }
-
-    function captureTiles(x, y, playerNumber) {
-        const capturedTiles = [];
-        const allDirections = cardinalDirections.concat(diagonalDirections);
-
-        allDirections.forEach(dir => {
-            const newX = x + dir.dx;
-            const newY = y + dir.dy;
-            if (isValidTile(newX, newY) && board[newX][newY] !== playerNumber) {
-                if (isSurrounded(newX, newY, playerNumber)) {
-                    board[newX][newY] = playerNumber;
-                    capturedTiles.push({x: newX, y: newY});
-                }
-            }
-        });
-        return capturedTiles;
-    }
-
-    function isSurrounded(x, y, playerNumber) {
-        const surroundingTiles = cardinalDirections.filter(dir => {
-            const newX = x + dir.dx;
-            const newY = y + dir.dy;
-            return isValidTile(newX, newY) && board[newX][newY] === playerNumber;
-        });
-
-        // Check if the tile is surrounded on at least 3 sides
-        return surroundingTiles.length >= 3;
-    }
-
-    function isValidTile(x, y) {
-        return x >= 0 && x < board.length && y >= 0 && y < board[0].length;
-    }
-
-    function updatePlayerList() {
-        const playerList = [];
-        if (players.player1.id) playerList.push(players.player1);
-        if (players.player2.id) playerList.push(players.player2);
-        io.emit('updatePlayerList', playerList);
-    }
 });
 
 const PORT = process.env.PORT || 3001;

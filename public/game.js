@@ -2,9 +2,7 @@ let board;
 let player = {};
 let currentPlayerNumber;
 let waitingForOpponent = true;
-let lastFlippedTile = null; // Track the last flipped tile
-let captureQueue = []; // Queue to manage capture groups
-let animating = false; // Flag to indicate if an animation is in progress
+let lastFlippedTile = null;
 let flipDuration = 500; // Duration of the flip animation in milliseconds
 let playerNumberEnum = {};
 let themes = {};
@@ -35,16 +33,17 @@ const directions = [
 
 socket.on('playerDisconnected', (data) => {
     board = data.board;
-    updateScores(data.players);
+    players = data.players;
+    currentPlayerNumber = data.currentPlayerNumber;
     waitingForOpponent = data.waitingForOpponent;
-    lastFlippedTile = null; // to remove the lock icon when the game resets
-    updateTurnIndicator();
+    lastFlippedTile = null; // to remove lock icon on game reset
     document.getElementById('opponentColor').style.backgroundColor = 'black';
 
+    updateScores(data.players);
     renderBoard();
+    updateTurnIndicator();
 });
 
-// Listen for themes from the server
 socket.on('receiveThemesAndEnums', (data) => {
     themes = data.themes;
     playerNumberEnum = data.playerNumberEnum;
@@ -57,7 +56,6 @@ socket.on('receiveThemesAndEnums', (data) => {
     });
 });
 
-// Join button event listener
 joinButton.addEventListener('click', () => {
     const playerName = playerNameInput.value.trim();
     if (playerName) {
@@ -67,13 +65,11 @@ joinButton.addEventListener('click', () => {
     }
 });
 
-// Event listener for theme selection
 themeSelect.addEventListener('change', (event) => {
     const selectedTheme = event.target.value;
     socket.emit('requestThemeChange', { playerNumber: player.playerNumber, theme: selectedTheme });
 });
 
-// Apply theme to the client
 function applyTheme(players) {
     const selectedThemeName = Object.values(players).find(p => p.playerNumber === player.playerNumber).theme;
     const selectedTheme = themes[selectedThemeName];
@@ -96,7 +92,6 @@ function applyTheme(players) {
     renderBoard();
 }
 
-// Listen for theme change confirmation from server
 socket.on('themeChange', (data) => {
     const { playerNumber, players } = data;
     if (playerNumber !== player.playerNumber) {return;}
@@ -104,7 +99,6 @@ socket.on('themeChange', (data) => {
     applyTheme(players);
 });
 
-// Listen for board initialization from server
 socket.on('initializeBoard', (data) => {
     board = data.board;
     currentPlayerNumber = data.currentPlayerNumber;
@@ -113,14 +107,12 @@ socket.on('initializeBoard', (data) => {
     updateScores(players);
 });
 
-// Listen for player assignment
 socket.on('assignPlayer', (data) => {
     player = data.player;
     waitingForOpponent = data.waitingForOpponent;
     updateTurnIndicator();
 });
 
-// Function to add event listeners to each tile
 function addTileHoverListeners(tileElement, x, y) {
     tileElement.addEventListener('mouseenter', () => handleTileHover(x, y));
     tileElement.addEventListener('mouseleave', () => handleTileHoverOut(x, y));
@@ -129,8 +121,10 @@ function addTileHoverListeners(tileElement, x, y) {
 function handleTileHover(x, y) {
     if (!waitingForOpponent && player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
         if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
-            return; // Skip hover effect if this is the last flipped tile
+            return; // Skip hover effect
         }
+
+        const hoverClass = player.playerNumber === 1 ? 'tile-selector-player1' : 'tile-selector-player2';
 
         directions.forEach(dir => {
             const newX = x + dir.dx;
@@ -138,7 +132,7 @@ function handleTileHover(x, y) {
             if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
                 const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
                 if (tileElement) {
-                    tileElement.classList.add('tile-selector');
+                    tileElement.classList.add(hoverClass);
                 }
             }
         });
@@ -146,16 +140,17 @@ function handleTileHover(x, y) {
 }
 
 function handleTileHoverOut(x, y) {
-    if (!waitingForOpponent
-        && player.playerNumber === currentPlayerNumber
-        && board[x][y] !== player.playerNumber) {
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
+
+        const hoverClass = player.playerNumber === 1 ? 'tile-selector-player1' : 'tile-selector-player2';
+
         directions.forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
             if (isValidTile(newX, newY)) {
                 const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
                 if (tileElement) {
-                    tileElement.classList.remove('tile-selector');
+                    tileElement.classList.remove(hoverClass);
                 }
             }
         });
@@ -186,7 +181,7 @@ function renderBoard() {
             if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
                 const lockIcon = document.createElement('span');
                 lockIcon.className = 'lock-icon';
-                lockIcon.textContent = '🔒'; // Unicode lock icon
+                lockIcon.textContent = '🔒';
                 tileElement.appendChild(lockIcon);
             }
 
@@ -216,24 +211,21 @@ function handleTileClick(x, y) {
             return;
         }
 
+        const hoverClass = player.playerNumber === 1 ? 'tile-selector-player1' : 'tile-selector-player2';
+
         // Remove hover effect from all tiles
-        const allTiles = document.querySelectorAll('.tile-selector');
-        allTiles.forEach(tile => tile.classList.remove('tile-selector'));
+        const allTiles = document.querySelectorAll(`.${hoverClass}`);
+        allTiles.forEach(tile => tile.classList.remove(hoverClass));
 
         socket.emit('move', {player, x, y}); // Emit player identifier
     }
 }
 
-// Listen for turn updates from server
-// socket.on('turn', (newCurrentPlayerNumber) => {
-//     currentPlayerNumber = newCurrentPlayerNumber;
-//     waitingForOpponent = false;
-// });
-
-// Function to flip a tile
 async function flipTile(x, y, playerNumber) {
     return new Promise((resolve) => {
         const tileElement = document.querySelector(`.tile[data-x='${x}'][data-y='${y}']`);
+        console.log('tileElement', tileElement);
+        console.log('board[x][y]', board[x][y]);
         if (tileElement) {
             tileElement.classList.add('flipped');
             setTimeout(() => {
@@ -241,8 +233,8 @@ async function flipTile(x, y, playerNumber) {
             }, (flipDuration * 0.5)); // Change color at the halfway point of the animation
             setTimeout(() => {
                 tileElement.classList.remove('flipped');
-                resolve(); // Resolve the promise after the animation completes
-            }, flipDuration); // Match the duration of the animation
+                resolve();
+            }, flipDuration);
         } else {
             resolve();
         }
@@ -258,52 +250,34 @@ socket.on('updateGame', async (data) => {
     board = data.board;
     const captureGroups = data.captureGroups || [];
     currentPlayerNumber = data.currentPlayerNumber;
-    lastFlippedTile = data.lastFlippedTile; // Update the last flipped tile
+    lastFlippedTile = data.lastFlippedTile;
     players = data.players;
     waitingForOpponent = data.waitingForOpponent;
 
     updateScores(players);
 
-    // Add the lock icon after the first tile flip completes
+    // Update player color indicators
+    document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
+    document.getElementById('opponentColor').style.backgroundColor = player.playerNumber === 1 ? player2Color : player1Color;
+
+    // Sequentially animate captureGroups
+    for (const group of captureGroups) {
+        await flipTileGroup(group, player.playerNumber);
+    }
+
+    // Add lock icon to selected tile
     const tileElement = document.querySelector(`.tile[data-x='${lastFlippedTile?.x}'][data-y='${lastFlippedTile?.y}']`);
     if (tileElement) {
         const lockIcon = document.createElement('span');
         lockIcon.className = 'lock-icon';
-        lockIcon.textContent = '🔒'; // Unicode lock icon
+        lockIcon.textContent = '🔒';
         tileElement.appendChild(lockIcon);
-    }
-
-    // Sequentially animate each capture group
-    for (const group of captureGroups) {
-        await flipTileGroup(group, player.playerNumber);
     }
 
     renderBoard();
     updateTurnIndicator();
 });
 
-// Handle spectators
-socket.on('spectator', () => {
-    alert('You are a spectator. Wait for a player slot to open up.');
-});
-
-// Listen for player list update
-socket.on('updatePlayerList', (players) => {
-    const you = Object.values(players).find(p => p.id === socket.id);
-    const opponent = Object.values(players).find(p => p.id !== socket.id);
-
-    if (you) {
-        document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
-    }
-
-    if (opponent) {
-        document.getElementById('opponentColor').style.backgroundColor = player.playerNumber === 1 ? player2Color : player1Color;
-    }
-
-    updateScores(players)
-});
-
-// Function to update turn indicator
 function updateTurnIndicator() {
     if (waitingForOpponent) {
         turnIndicator.textContent = "Waiting for an opponent to join...";
@@ -314,7 +288,6 @@ function updateTurnIndicator() {
     }
 }
 
-// Function to update scores
 function updateScores(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);

@@ -54,15 +54,14 @@
             transition: transform 1s;
             position: relative; /* To position the lock icon */
         }
-        .tile-selector {
-            filter: brightness(1.4);
-            cursor: pointer;
+        #board .tile-selector-player1 {
+            background-color: var(--player1-color) !important;
+            border: 1px solid var(--text-color);
+            filter: brightness(1.2);
         }
-        .tile.player1 {
-            background-color: var(--player1-color);
-        }
-        .tile.player2 {
-            background-color: var(--player2-color);
+        #board .tile-selector-player2 {
+            background-color: var(--player2-color) !important;
+            border: 1px solid var(--text-color);
         }
         .flipped {
             animation: flip 500ms ease-in-out;
@@ -103,9 +102,9 @@
             height: 155px; /* 100px for tiles + 4px for borders */
             border: 3px solid var(--territory-border-color);
             box-sizing: border-box;
-            pointer-events: none; /* Allow clicks to pass through */
+            pointer-events: none;
         }
-        .player-color-identifier {
+        .player-color-indicator {
             width: 20px;
             height: 20px;
             display: inline-block;
@@ -140,17 +139,17 @@
     </div>
     <div id="game" class="container">
         <h1>Clicky Flip Flip</h1>
-        <p id="turnIndicator">Waiting for players...</p>
         <select id="themeSelect"></select>
+        <p id="turnIndicator">Waiting for players...</p>
         <div id="scoreboard">
-            <h2>Scoreboard</h2>
             <div class="players-container">
                 <div id="youContainer">
-                    <div class="player-color-identifier" id="youColor"></div>
+                    <div class="player-color-indicator" id="youColor"></div>
                     <p id="youScore">You: 0</p>
                 </div>
+
                 <div id="opponentContainer">
-                    <div class="player-color-identifier" id="opponentColor"></div>
+                    <div class="player-color-indicator" id="opponentColor"></div>
                     <p id="opponentScore">Opponent: 0</p>
                 </div>
             </div>
