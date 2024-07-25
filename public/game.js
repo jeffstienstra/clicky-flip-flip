@@ -217,20 +217,19 @@ function handleTileClick(x, y) {
 }
 
 // Listen for turn updates from server
-socket.on('turn', (newCurrentPlayerNumber) => {
-    currentPlayerNumber = newCurrentPlayerNumber;
-    waitingForOpponent = false;
-    updateTurnIndicator();
-});
+// socket.on('turn', (newCurrentPlayerNumber) => {
+//     currentPlayerNumber = newCurrentPlayerNumber;
+//     waitingForOpponent = false;
+// });
 
 // Function to flip a tile
-async function flipTile(x, y, player) {
+async function flipTile(x, y, playerNumber) {
     return new Promise((resolve) => {
         const tileElement = document.querySelector(`.tile[data-x='${x}'][data-y='${y}']`);
         if (tileElement) {
             tileElement.classList.add('flipped');
             setTimeout(() => {
-                tileElement.style.backgroundColor = player === 1 ? player1Color : player2Color;
+                tileElement.style.backgroundColor = playerNumber === 1 ? player1Color : player2Color;
             }, (flipDuration * 0.5)); // Change color at the halfway point of the animation
             setTimeout(() => {
                 tileElement.classList.remove('flipped');
@@ -242,20 +241,23 @@ async function flipTile(x, y, player) {
     });
 }
 
-async function flipTileGroup(tiles, player) {
-    const flipPromises = tiles.map(({x, y}) => flipTile(x, y, player));
+async function flipTileGroup(tiles, playerNumber) {
+    const flipPromises = tiles.map(({x, y}) => flipTile(x, y, playerNumber));
     await Promise.all(flipPromises);
 }
 
 socket.on('updateGame', async (data) => {
-    const {board: newBoard, players, lastFlipped, captureGroups} = data;
-    board = newBoard;
+    board = data.board;
+    const captureGroups = data.captureGroups || [];
     currentPlayerNumber = data.currentPlayerNumber;
-    lastFlippedTile = lastFlipped; // Update the last flipped tile
+    lastFlippedTile = data.lastFlippedTile; // Update the last flipped tile
+    players = data.players;
+    waitingForOpponent = data.waitingForOpponent;
+
     updateScores(players);
 
     // Add the lock icon after the first tile flip completes
-    const tileElement = document.querySelector(`.tile[data-x='${lastFlipped.x}'][data-y='${lastFlipped.y}']`);
+    const tileElement = document.querySelector(`.tile[data-x='${lastFlippedTile?.x}'][data-y='${lastFlippedTile?.y}']`);
     if (tileElement) {
         const lockIcon = document.createElement('span');
         lockIcon.className = 'lock-icon';
@@ -265,11 +267,11 @@ socket.on('updateGame', async (data) => {
 
     // Sequentially animate each capture group
     for (const group of captureGroups) {
-        await flipTileGroup(group, newBoard[group[0].x][group[0].y]);
+        await flipTileGroup(group, player.playerNumber);
     }
 
-    // Finally render the board
     renderBoard();
+    updateTurnIndicator();
 });
 
 // Handle spectators
