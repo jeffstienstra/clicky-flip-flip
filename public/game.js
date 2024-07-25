@@ -126,39 +126,42 @@ function addTileHoverListeners(tileElement, x, y) {
     tileElement.addEventListener('mouseleave', () => handleTileHoverOut(x, y));
 }
 
-// Function to handle tile hover
 function handleTileHover(x, y) {
-    if (board[x][y] === player.playerNumber) {return;}
-
-    directions.forEach(dir => {
-        const newX = x + dir.dx;
-        const newY = y + dir.dy;
-        // do not add the 'tile-selector' class if the tile beneath the cursor (directions[0]) belongs to the player
-
-        if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
-            const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
-            if (tileElement) {
-                tileElement.classList.add('tile-selector');
-            }
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
+        if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
+            return; // Skip hover effect if this is the last flipped tile
         }
-    });
+
+        directions.forEach(dir => {
+            const newX = x + dir.dx;
+            const newY = y + dir.dy;
+            if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
+                const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+                if (tileElement) {
+                    tileElement.classList.add('tile-selector');
+                }
+            }
+        });
+    }
 }
 
-// Function to handle tile hover out
 function handleTileHoverOut(x, y) {
-    if (board[x][y] === player.playerNumber) {return;}
-
-    directions.forEach(dir => {
-        const newX = x + dir.dx;
-        const newY = y + dir.dy;
-        if (isValidTile(newX, newY)) {
-            const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
-            if (tileElement) {
-                tileElement.classList.remove('tile-selector');
+    if (!waitingForOpponent
+        && player.playerNumber === currentPlayerNumber
+        && board[x][y] !== player.playerNumber) {
+        directions.forEach(dir => {
+            const newX = x + dir.dx;
+            const newY = y + dir.dy;
+            if (isValidTile(newX, newY)) {
+                const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+                if (tileElement) {
+                    tileElement.classList.remove('tile-selector');
+                }
             }
-        }
-    });
+        });
+    }
 }
+
 
 function isValidTile(x, y) {
     return x >= 0 && x < board.length && y >= 0 && y < board[0].length;
@@ -212,6 +215,11 @@ function handleTileClick(x, y) {
         if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
             return;
         }
+
+        // Remove hover effect from all tiles
+        const allTiles = document.querySelectorAll('.tile-selector');
+        allTiles.forEach(tile => tile.classList.remove('tile-selector'));
+
         socket.emit('move', {player, x, y}); // Emit player identifier
     }
 }
