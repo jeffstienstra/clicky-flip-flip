@@ -7,11 +7,16 @@
     <style>
         :root {
             --player1-color: #445732;
+            --player1-hover-color: #5f724e;
             --player2-color: #728448;
+            --player2-hover-color: #8fae5f;
             --background-color: #27301c;
             --board-color: #27301c;
             --board-border-color: #9fb060;
             --tile-border-color: #ced7ab;
+            /* add these if needed to better optimize contrast with each theme */
+            /* --tile-border-hover-player1: #ced7ab;
+            --tile-border-hover-player2: #ced7ab; */
             --territory-border-color: #27301c;
             --text-color: #9fb060;
         }
@@ -56,12 +61,13 @@
         }
         #board .tile-selector-player1 {
             background-color: var(--player1-color) !important;
-            border: 1px solid var(--text-color);
+            border: 2px solid var(--tile-border-color);
             filter: brightness(1.2);
         }
         #board .tile-selector-player2 {
             background-color: var(--player2-color) !important;
-            border: 1px solid var(--text-color);
+            border: 2px solid var(--tile-border-color);
+            opacity: brightness(1.1);
         }
         .flipped {
             animation: flip 500ms ease-in-out;

@@ -206,33 +206,26 @@ io.on('connection', (socket) => {
     });
 
     socket.on('move', async (data) => {
-        const {player, x, y} = data;
+        const {player, selectedTiles} = data;
         const gameRoom = getPlayerRoom(player.id);
         const game = games[gameRoom];
 
-        if (player.playerNumber === game.currentPlayerNumber && game.board[x][y] !== player.playerNumber) {
-            const directions = [
-                {dx: 0, dy: 0}, // Center
-                {dx: 0, dy: -1}, // Up
-                {dx: 0, dy: 1},  // Down
-                {dx: -1, dy: 0}, // Left
-                {dx: 1, dy: 0},  // Right
-            ];
-
+        if (player.playerNumber === game.currentPlayerNumber) {
             const captureGroups = [];
-            const initialFlips = []; // valid tiles beneath cursor
-            directions.forEach(tile => {
-                const newX = x + tile.dx;
-                const newY = y + tile.dy;
-                if (isValidTile(newX, newY) && game.board[newX][newY] !== player.playerNumber) {
-                    game.board[newX][newY] = player.playerNumber;
-                    initialFlips.push({x: newX, y: newY});
+
+            selectedTiles.forEach(({x, y}) => {
+                if (isValidTile(x, y) && game.board[x][y] !== player.playerNumber) {
+                    game.board[x][y] = player.playerNumber;
                 }
             });
 
-            captureGroups.push(initialFlips);
+            captureGroups.push(selectedTiles);
 
-            let flippedTiles = captureTiles(x, y, player.playerNumber, game);
+            let flippedTiles = [];
+            selectedTiles.forEach(({x, y}) => {
+                flippedTiles.push(...captureTiles(x, y, player.playerNumber, game));
+            });
+
             while (flippedTiles.length > 0) {
                 captureGroups.push(flippedTiles);
                 const newFlippedTiles = [];
@@ -243,10 +236,11 @@ io.on('connection', (socket) => {
             }
 
             calculatePlayerScore([...(captureGroups.flat() || [])], player, gameRoom);
-            game.lastFlippedTile = {x, y}; // Update the last flipped tile
+            game.lastFlippedTile = selectedTiles[selectedTiles.length - 1]; // Update the last flipped tile
 
             game.currentPlayerNumber = togglePlayerTurn(game);
 
+            // Emit the updated game state immediately
             io.to(gameRoom).emit('updateGame', {
                 board: game.board,
                 players: game.players,
@@ -257,6 +251,7 @@ io.on('connection', (socket) => {
             });
         }
     });
+
 });
 
 const PORT = process.env.PORT || 3001;
