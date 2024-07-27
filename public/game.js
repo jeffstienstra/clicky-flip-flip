@@ -37,6 +37,8 @@ const CURSOR_SHAPES = [
     // [{dx: -1, dy: -1}, {dx: -1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: -1}],
     // L + opposite corner tile
     [{dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: -1, dy: 1}],
+    // Straight line
+    [{dx: 0, dy: -2}, {dx: 0, dy: -1}, {dx: 0, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: 2}],
     // Diagonal line
     [{dx: -2, dy: -2}, {dx: -1, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: 1}, {dx: 2, dy: 2}],
     // Checkerboard pattern without center
@@ -64,15 +66,21 @@ themeSelect.addEventListener('change', (event) => {
 });
 
 function handleTileClick(x, y) {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+        // Prevent flipping the last flipped tile
         if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
-            return; // Prevent flipping the last flipped tile
+            return;
+        }
+
+        // Prevent clicking when hovering over own color
+        if (board[x][y] === player.playerNumber) {
+            return;
         }
 
         clearHoverEffect(x, y);
 
         const selectedTiles = [];
-        CURSOR_SHAPES[currentCursorShapeIndex].map(dir => { // filter out tiles that are already owned by the player
+        CURSOR_SHAPES[currentCursorShapeIndex].forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
             if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
@@ -233,8 +241,8 @@ function renderBoard() {
         for (let j = 0; j < 4; j++) {
             const territoryBorder = document.createElement('div');
             territoryBorder.className = 'territory-border';
-            territoryBorder.style.left = `${i * 155}px`; // Adjusted for border and gap
-            territoryBorder.style.top = `${j * 155}px`; // Adjusted for border and gap
+            territoryBorder.style.left = `${i * 150}px`; // Adjusted for border and gap
+            territoryBorder.style.top = `${j * 150}px`; // Adjusted for border and gap
             boardElement.appendChild(territoryBorder);
         }
     }
@@ -259,33 +267,42 @@ function rotateCursorShape() {
 function clearHoverEffect() {
     const hoverClass1 = 'tile-selector-player1';
     const hoverClass2 = 'tile-selector-player2';
+    const invalidClass = 'tile-selector-invalid';
 
-    document.querySelectorAll(`.${hoverClass1}, .${hoverClass2}`).forEach(tile => {
+    document.querySelectorAll(`.${hoverClass1}, .${hoverClass2}, .${invalidClass}`).forEach(tile => {
         tile.classList.remove(hoverClass1);
         tile.classList.remove(hoverClass2);
+        tile.classList.remove(invalidClass);
     });
 }
 
 function handleTileHover(x, y) {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) { // && board[x][y] !== player.playerNumber
-        if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
-            return; // Skip hover effect if this is the last flipped tile
-        }
-
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
         currentHoverX = x;
         currentHoverY = y;
 
-        clearHoverEffect(x, y);
+        clearHoverEffect();
 
         const hoverClass = player.playerNumber === 1 ? 'tile-selector-player1' : 'tile-selector-player2';
+        const invalidClass = 'tile-selector-invalid';
+        let isInvalidMove = false;
+
+        // Check if the center tile is invalid
+        if (board[x][y] === player.playerNumber || (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y)) {
+            isInvalidMove = true;
+        }
 
         CURSOR_SHAPES[currentCursorShapeIndex].forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
-            if (isValidTile(newX, newY)) { // && board[newX][newY] !== player.playerNumber
+            if (isValidTile(newX, newY)) {
                 const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
                 if (tileElement) {
-                    tileElement.classList.add(hoverClass);
+                    if (isInvalidMove || board[newX][newY] === player.playerNumber) {
+                        tileElement.classList.add(invalidClass);
+                    } else {
+                        tileElement.classList.add(hoverClass);
+                    }
                 }
             }
         });
@@ -293,7 +310,7 @@ function handleTileHover(x, y) {
 }
 
 function handleTileHoverOut(x, y) {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber && board[x][y] !== player.playerNumber) {
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
         clearHoverEffect();
         currentHoverX = null;
         currentHoverY = null;
@@ -372,4 +389,3 @@ function applyTheme(players) {
 
     renderBoard();
 }
-

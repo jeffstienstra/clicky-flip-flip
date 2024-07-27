@@ -43,11 +43,10 @@
             grid-template-columns: repeat(20, 30px);
             grid-template-rows: repeat(20, 30px);
             background-color: var(--board-color);
-            gap: 1px;
+            gap: 0px;
             position: relative;
             border: 5px solid var(--board-border-color);
             border-radius: 5px;
-            cursor: pointer;
         }
         .tile {
             width: 30px;
@@ -60,14 +59,18 @@
             position: relative; /* To position the lock icon */
         }
         #board .tile-selector-player1 {
-            background-color: var(--player1-color) !important;
-            border: 2px solid var(--tile-border-color);
-            filter: brightness(1.2);
+            background-color: var(--player1-color);
+            border: 3px solid var(--tile-border-color);
         }
         #board .tile-selector-player2 {
-            background-color: var(--player2-color) !important;
-            border: 2px solid var(--tile-border-color);
-            opacity: brightness(1.1);
+            background-color: var(--player2-color);
+            border: 3px solid var(--tile-border-color);
+        }
+        #board .tile-selector-invalid {
+            opacity: 0.8;
+        }
+        .tile-hidden {
+            visibility: hidden;
         }
         .flipped {
             animation: flip 500ms ease-in-out;
@@ -104,8 +107,8 @@
         }
         .territory-border {
             position: absolute;
-            width: 155px; /* 100px for tiles + 4px for borders */
-            height: 155px; /* 100px for tiles + 4px for borders */
+            width: 150px; /* 100px for tiles + 4px for borders */
+            height: 150px; /* 100px for tiles + 4px for borders */
             border: 3px solid var(--territory-border-color);
             box-sizing: border-box;
             pointer-events: none;
