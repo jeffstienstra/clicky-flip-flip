@@ -1,5 +1,41 @@
 {
     "themes": {
+        "SNES": {
+            "backgroundColor": "#211a21",
+            "textColor": "#cec9cc",
+
+            "player1Color": "#4f43ae",
+            "player2Color": "#b5b6e4",
+            "boardBorderColor": "#cec9cc",
+
+            "boardColor": "#908a99",
+            "tileBorderColor": "#908a99",
+            "territoryBorderColor": "#211a21"
+        },
+        "NES": {
+            "backgroundColor": "#e5e5e5",
+            "textColor": "#0d0c0c",
+
+            "player1Color": "#0d0c0c",
+            "player2Color": "#a5a2a2",
+            "boardBorderColor": "#0d0c0c",
+
+            "boardColor": "#dd2020",
+            "tileBorderColor": "#dd2020",
+            "territoryBorderColor": "#dd2020"
+        },
+        "GameBoy": {
+            "backgroundColor": "#acc154",
+            "textColor": "#0f380f",
+
+            "player1Color": "#306230",
+            "player2Color": "#8bac0f",
+            "boardBorderColor": "#0f380f",
+
+            "boardColor": "#9bbc0f",
+            "tileBorderColor": "#0f380f",
+            "territoryBorderColor": "#0f380f"
+        },
         "Forest": {
             "backgroundColor": "#27301c",
             "textColor": "#9fb060",
@@ -35,42 +71,6 @@
             "boardColor": "#23201a",
             "tileBorderColor": "#a79368",
             "territoryBorderColor": "#23201a"
-        },
-        "GameBoy": {
-            "backgroundColor": "#acc154",
-            "textColor": "#0f380f",
-
-            "player1Color": "#306230",
-            "player2Color": "#8bac0f",
-            "boardBorderColor": "#0f380f",
-
-            "boardColor": "#9bbc0f",
-            "tileBorderColor": "#0f380f",
-            "territoryBorderColor": "#0f380f"
-        },
-        "NES": {
-            "backgroundColor": "#e5e5e5",
-            "textColor": "#0d0c0c",
-
-            "player1Color": "#0d0c0c",
-            "player2Color": "#a5a2a2",
-            "boardBorderColor": "#0d0c0c",
-
-            "boardColor": "#dd2020",
-            "tileBorderColor": "#dd2020",
-            "territoryBorderColor": "#dd2020"
-        },
-        "SNES": {
-            "backgroundColor": "#211a21",
-            "textColor": "#cec9cc",
-
-            "player1Color": "#4f43ae",
-            "player2Color": "#b5b6e4",
-            "boardBorderColor": "#cec9cc",
-
-            "boardColor": "#908a99",
-            "tileBorderColor": "#908a99",
-            "territoryBorderColor": "#211a21"
         }
     }
 }

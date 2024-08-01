@@ -20,9 +20,9 @@
             --territory-border-color: #27301c;
             --text-color: #9fb060;
         }
-
         body {
             font-family: Arial, sans-serif;
+            /* font-size: 2rem; */
             background-color: var(--background-color);
             color: var(--text-color);
             display: flex;
@@ -30,6 +30,30 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+        }
+        label {
+            margin: 10px 0;
+        }
+        select {
+            padding: 3px;
+            /* margin: 5px 0; */
+            max-width: fit-content;
+        }
+        input {
+            padding: 3px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 1px solid var(--text-color);
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: var(--text-color);
+            color: var(--background-color);
         }
         #landing {
             display: block;
@@ -59,18 +83,15 @@
             position: relative; /* To position the lock icon */
         }
         #board .tile-selector-player1 {
-            background-color: var(--player1-color);
+            background-color: var(--player1-color) !important;
             border: 3px solid var(--tile-border-color);
         }
         #board .tile-selector-player2 {
-            background-color: var(--player2-color);
+            background-color: var(--player2-color) !important;
             border: 3px solid var(--tile-border-color);
         }
         #board .tile-selector-invalid {
-            opacity: 0.8;
-        }
-        .tile-hidden {
-            visibility: hidden;
+            opacity: 0.5;
         }
         .flipped {
             animation: flip 500ms ease-in-out;
@@ -105,14 +126,16 @@
                 transform-origin: center;
             }
         }
+        /*
         .territory-border {
             position: absolute;
-            width: 150px; /* 100px for tiles + 4px for borders */
-            height: 150px; /* 100px for tiles + 4px for borders */
+            width: 150px;
+            height: 150px;
             border: 3px solid var(--territory-border-color);
             box-sizing: border-box;
             pointer-events: none;
         }
+        */
         .player-color-indicator {
             width: 20px;
             height: 20px;
@@ -138,13 +161,37 @@
             color: black;
             pointer-events: none;
         }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .board-orientation {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
     </style>
 </head>
 <body>
     <div id="landing" class="container">
         <h1>Clicky Flip Flip</h1>
-        <input type="text" id="playerName" placeholder="Enter your name" />
-        <button id="joinButton">Join</button>
+        <div class="board-orientation container">
+            <label for="boardOrientation">Game Mode:</label>
+            <select id="boardOrientation">
+                <option value="islands">Islands</option>
+                <option value="checkerboard">Checkerboard</option>
+                <option value="topBottomSplit">Top vs Bottom</option>
+            </select>
+        </div>
+        <div class="container">
+            <input type="text" id="playerName" placeholder="Enter your name" value="test"/>
+            <button id="joinButton">Join</button>
+        </div>
     </div>
     <div id="game" class="container">
         <h1>Clicky Flip Flip</h1>
@@ -156,7 +203,6 @@
                     <div class="player-color-indicator" id="youColor"></div>
                     <p id="youScore">You: 0</p>
                 </div>
-
                 <div id="opponentContainer">
                     <div class="player-color-indicator" id="opponentColor"></div>
                     <p id="opponentScore">Opponent: 0</p>

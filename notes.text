@@ -8,14 +8,14 @@ game state notes
             name,
             playerNumber: 1,
             score: 0,
-            theme: 'Forest',
+            theme: 'SNES',
             isMyTurn: true,
         },
         {
             name,
             playerNumber: 2,
             score: 0,
-            theme: 'Forest',
+            theme: 'NES',
             isMyTurn: false,
         }
     ]

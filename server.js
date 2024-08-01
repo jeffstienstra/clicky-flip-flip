@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const fs = require('fs');
-
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
@@ -26,36 +25,127 @@ const DIAGONAL_DIRECTIONS = [
     {dx: 1, dy: 1}    // Bottom-right
 ];
 const ALL_DIRECTIONS = CARDINAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
-
+const islandShapes = [
+    // main island
+    [
+        {dx: -2, dy: -2}, {dx: -1, dy: -2}, {dx: 0, dy: -2},
+        {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
+        {dx: -1, dy: 0}, {dx: 0, dy: 0}, {dx: 1, dy: 0},
+        {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1},
+        {dx: 0, dy: 2}, {dx: 1, dy: 2}, {dx: 2, dy: 2},
+    ],
+    // small island
+    [
+        {dx: 0, dy: -1}, {dx: 1, dy: -1},
+        {dx: -1, dy: 0}, {dx: 0, dy: 0}, {dx: 1, dy: 0},
+        {dx: -1, dy: 1}, {dx: 0, dy: 1},
+    ],
+];
 // Load external data
-const themes = JSON.parse(fs.readFileSync('themes.json')).themes;
-const playerNumberEnum = JSON.parse(fs.readFileSync('playerNumberEnum.json')).playerNumberEnum;
+const THEMES = JSON.parse(fs.readFileSync('themes.json')).themes;
+const PLAYER_NUMBER_ENUM = JSON.parse(fs.readFileSync('playerNumberEnum.json')).playerNumberEnum;
 
 // Game state
 const games = {};
+let boardOrientation;
+let board;
 
 function initializeBoard() {
-    const board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
-    for (let i = 0; i < BOARD_SIZE; i += 5) {
-        for (let j = 0; j < BOARD_SIZE; j += 5) {
-            const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
-            for (let x = i; x < i + 5; x++) {
-                for (let y = j; y < j + 5; y++) {
-                    board[x][y] = playerOwner;
+    board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+    switch (boardOrientation) {
+        case 'checkerboard':
+            for (let i = 0; i < BOARD_SIZE; i += 5) {
+                for (let j = 0; j < BOARD_SIZE; j += 5) {
+                    const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
+                    for (let x = i; x < i + 5; x++) {
+                        for (let y = j; y < j + 5; y++) {
+                            board[x][y] = playerOwner;
+                        }
+                    }
                 }
+            }
+            break;
+            case 'islands':
+                createRandomIslands();
+                break;
+            case 'topBottomSplit':
+                for (let y = 0; y < BOARD_SIZE; y++) {
+                    for (let x = 0; x < BOARD_SIZE; x++) {
+                        if (x < BOARD_SIZE / 2) {
+                            if (x === 0 || y === 0 || y === BOARD_SIZE - 1) {
+                                board[x][y] = 2; // Player 2's color
+                            } else {
+                                board[x][y] = 1; // Player 1's color
+                            }
+                        } else {
+                            if (x === BOARD_SIZE - 1 || y === 0 || y === BOARD_SIZE - 1) {
+                                board[x][y] = 1; // Player 1's color
+                            } else {
+                                board[x][y] = 2; // Player 2's color
+                            }
+                        }
+                    }
+                }
+                break;
+            default:
+                console.log('Unknown board orientation:', boardOrientation);
+                break;
+    }
+    return board;
+}
+
+function createRandomIslands() {
+    // Step 1: Split the board into two halves
+    for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+            if (y < BOARD_SIZE / 2) {
+                board[x][y] = 1; // Player 1's half
+            } else {
+                board[x][y] = 2; // Player 2's half
             }
         }
     }
-    return board;
+
+    // Step 2: Generate islands for player 1 in player 2's half
+    placeIsland(islandShapes[0], 1, BOARD_SIZE - 5, BOARD_SIZE - 5);
+    placeIsland(islandShapes[1], 1, 3, BOARD_SIZE - 6);
+
+    // Step 3: Generate islands for player 2 in player 1's half
+    placeIsland(islandShapes[0], 2, 4, 4);
+    placeIsland(islandShapes[1], 2, BOARD_SIZE - 4, 5);
+}
+
+function placeIsland(shape, playerNumber, startX, startY) {
+    console.log('startX:', startX, 'startY:', startY);
+    shape.forEach(({dx, dy}) => {
+        const x = startX + dx;
+        const y = startY + dy;
+        if (isValidTile(x, y) && board[x][y] !== playerNumber && !isEdgeTile(x, y) && !isCenterColumnTile(x)) {
+            board[x][y] = playerNumber;
+        }
+    });
+}
+
+function isValidTile(x, y) {
+    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
+}
+
+function isEdgeTile(x, y) {
+    return x < 1 || x >= BOARD_SIZE - 1 || y < 1 || y >= BOARD_SIZE - 1;
+}
+
+function isCenterColumnTile(x) {
+    return x === Math.floor(BOARD_SIZE / 2) - 1 || x === Math.floor(BOARD_SIZE / 2);
 }
 
 function createGame() {
     const gameRoom = `game_${Object.keys(games).length + 1}`;
     games[gameRoom] = {
-        board: initializeBoard(),
+        // board: initializeBoard(boardOrientation),
         currentPlayerNumber: 1,
         lastFlippedTile: null,
         players: [],
+        boardOrientation: 'checkerboard' // Default orientation
     };
     return gameRoom;
 }
@@ -80,7 +170,7 @@ function addPlayerToGame(socket, name) {
         name,
         playerNumber,
         score: 0,
-        theme: 'Forest'
+        theme: 'SNES'
     };
     games[gameRoom].players.push(player);
     socket.join(gameRoom);
@@ -115,10 +205,6 @@ function togglePlayerTurn(game) {
     return (game.currentPlayerNumber % MAX_PLAYERS_PER_GAME) + 1; // For two players, it will toggle between 1 and 2
 }
 
-function isValidTile(x, y) {
-    return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
-}
-
 function isSurrounded(x, y, playerNumber, game) {
     const surroundingTiles = CARDINAL_DIRECTIONS.filter(dir => {
         const newX = x + dir.dx;
@@ -148,11 +234,17 @@ function captureTiles(x, y, playerNumber, game) {
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.emit('receiveThemesAndEnums', {themes, playerNumberEnum});
+    socket.emit('receiveThemesAndEnums', {THEMES, PLAYER_NUMBER_ENUM});
 
     socket.on('join', (data) => {
-        const {name} = data;
+        console.log('join:', data);
+        boardOrientation = data.boardOrientation;
+        const name = data.name;
         const {gameRoom, player} = addPlayerToGame(socket, name);
+        if (games[gameRoom].players.length === 1) {
+            games[gameRoom].boardOrientation = boardOrientation;
+            games[gameRoom].board = initializeBoard(boardOrientation);
+        }
 
         socket.emit('assignPlayer', {
             player,
@@ -181,7 +273,7 @@ io.on('connection', (socket) => {
         const {playerNumber, theme} = data;
         const gameRoom = getPlayerRoom(socket.id);
 
-        if (themes[theme] && gameRoom) {
+        if (THEMES[theme] && gameRoom) {
             const player = games[gameRoom].players.find(p => p.playerNumber === playerNumber);
             if (player) {
                 player.theme = theme;

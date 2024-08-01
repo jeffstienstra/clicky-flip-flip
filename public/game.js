@@ -25,25 +25,32 @@ const joinButton = document.getElementById('joinButton');
 const turnIndicator = document.getElementById('turnIndicator');
 const playerList = document.getElementById('playerList');
 const themeSelect = document.getElementById('themeSelect');
+const boardOrientationSelect = document.getElementById('boardOrientation');
 
-const CURSOR_SHAPES = [
-    // Plus shape
-    [{dx: 0, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}],
-    // T shape
-    [{dx: 0, dy: 0}, {dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: -2}],
-    // L shape
-    [{dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: 2, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: 2}],
-    // Square shape
-    // [{dx: -1, dy: -1}, {dx: -1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: -1}],
-    // L + opposite corner tile
-    [{dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: -1, dy: 1}],
-    // Straight line
-    [{dx: 0, dy: -2}, {dx: 0, dy: -1}, {dx: 0, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: 2}],
-    // Diagonal line
-    [{dx: -2, dy: -2}, {dx: -1, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: 1}, {dx: 2, dy: 2}],
-    // Checkerboard pattern without center
-    [{dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}, {dx: 1, dy: 1}], // {dx: 0, dy: 0},
-];
+const CURSOR_SHAPES = {
+    plus: [
+        {dx: 0, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}
+    ],
+    T: [
+        {dx: 0, dy: 0}, {dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: -2}
+    ],
+    L: [
+        {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: 2, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: 2}
+    ],
+    LPlus: [
+        {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: -1, dy: 1}
+    ],
+    checker: [
+        {dx: -1, dy: -1}, {dx: 1, dy: -1}, {dx: -1, dy: 1}, {dx: 1, dy: 1}
+    ],
+    line: [
+        [{dx: -2, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: 2, dy: 0}], // horizontal
+        [{dx: 2, dy: -2}, {dx: 1, dy: -1}, {dx: 0, dy: 0}, {dx: -1, dy: 1}, {dx: -2, dy: 2}], // diagonal
+        [{dx: 0, dy: -2}, {dx: 0, dy: -1}, {dx: 0, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: 2}], // vertical
+        [{dx: -2, dy: -2}, {dx: -1, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: 1}, {dx: 2, dy: 2}] // diagonal
+    ]
+};
+let currentShapeKey = 'plus';
 let currentCursorShapeIndex = 0;
 
 
@@ -53,8 +60,9 @@ let currentCursorShapeIndex = 0;
 
 joinButton.addEventListener('click', () => {
     const playerName = playerNameInput.value.trim();
+    const boardOrientation = boardOrientationSelect.value;
     if (playerName) {
-        socket.emit('join', {name: playerName});
+        socket.emit('join', {name: playerName, boardOrientation});
         landingPage.style.display = 'none';
         gamePage.style.display = 'block';
     }
@@ -80,7 +88,11 @@ function handleTileClick(x, y) {
         clearHoverEffect(x, y);
 
         const selectedTiles = [];
-        CURSOR_SHAPES[currentCursorShapeIndex].forEach(dir => {
+        const currentShape = currentShapeKey === 'line'
+            ? CURSOR_SHAPES.line[currentCursorShapeIndex]
+            : CURSOR_SHAPES[currentShapeKey];
+
+        currentShape.forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
             if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
@@ -143,9 +155,8 @@ socket.on('playerDisconnected', (data) => {
 });
 
 socket.on('receiveThemesAndEnums', (data) => {
-    themes = data.themes;
-    playerNumberEnum = data.playerNumberEnum;
-
+    themes = data.THEMES;
+    playerNumberEnum = data.PLAYER_NUMBER_ENUM;
     Object.keys(themes).forEach(theme => {
         const option = document.createElement('option');
         option.value = theme;
@@ -180,10 +191,12 @@ document.addEventListener('wheel', (event) => {
         if (currentHoverX !== null && currentHoverY !== null) {
             clearHoverEffect(currentHoverX, currentHoverY);
 
+            const shapeKeys = Object.keys(CURSOR_SHAPES);
+            const currentIndex = shapeKeys.indexOf(currentShapeKey);
             if (event.deltaY < 0) {
-                currentCursorShapeIndex = (currentCursorShapeIndex + 1) % CURSOR_SHAPES.length;
+                currentShapeKey = shapeKeys[(currentIndex + 1) % shapeKeys.length];
             } else {
-                currentCursorShapeIndex = (currentCursorShapeIndex - 1 + CURSOR_SHAPES.length) % CURSOR_SHAPES.length;
+                currentShapeKey = shapeKeys[(currentIndex - 1 + shapeKeys.length) % shapeKeys.length];
             }
 
             handleTileHover(currentHoverX, currentHoverY);
@@ -250,17 +263,29 @@ function renderBoard() {
 
 function rotateCursorShape() {
     if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
-        const rotatedShape = CURSOR_SHAPES[currentCursorShapeIndex].map(({dx, dy}) => ({
-            dx: dy,
-            dy: -dx
-        }));
-
-        CURSOR_SHAPES[currentCursorShapeIndex] = rotatedShape;
+        if (currentShapeKey === 'line') {
+            currentCursorShapeIndex = (currentCursorShapeIndex + 1) % CURSOR_SHAPES.line.length;
+        } else {
+            const rotatedShape = CURSOR_SHAPES[currentShapeKey].map(({dx, dy}) => ({
+                dx: dy,
+                dy: -dx
+            }));
+            CURSOR_SHAPES[currentShapeKey] = rotatedShape;
+        }
 
         if (currentHoverX !== null && currentHoverY !== null) {
-            clearHoverEffect(currentHoverX, currentHoverY);
+            clearHoverEffect();
             handleTileHover(currentHoverX, currentHoverY);
         }
+    }
+}
+
+function switchShape(newShapeKey) {
+    currentShapeKey = newShapeKey;
+    currentCursorShapeIndex = 0;
+    if (currentHoverX !== null && currentHoverY !== null) {
+        clearHoverEffect();
+        handleTileHover(currentHoverX, currentHoverY);
     }
 }
 
@@ -292,9 +317,13 @@ function handleTileHover(x, y) {
             isInvalidMove = true;
         }
 
-        CURSOR_SHAPES[currentCursorShapeIndex].forEach(dir => {
-            const newX = x + dir.dx;
-            const newY = y + dir.dy;
+        const currentShape = currentShapeKey === 'line'
+        ? CURSOR_SHAPES.line[currentCursorShapeIndex]
+        : CURSOR_SHAPES[currentShapeKey];
+
+        currentShape.forEach(({dx, dy}) => {
+            const newX = x + dx;
+            const newY = y + dy;
             if (isValidTile(newX, newY)) {
                 const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
                 if (tileElement) {
@@ -306,6 +335,19 @@ function handleTileHover(x, y) {
                 }
             }
         });
+
+        if (isInvalidMove) {
+            currentShape.forEach(({dx, dy}) => {
+                const newX = x + dx;
+                const newY = y + dy;
+                if (isValidTile(newX, newY)) {
+                    const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+                    if (tileElement) {
+                        tileElement.classList.add(invalidClass);
+                    }
+                }
+            });
+        }
     }
 }
 
