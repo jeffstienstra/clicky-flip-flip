@@ -14,6 +14,7 @@ let themes = {};
 const rootStyles = getComputedStyle(document.documentElement);
 let player1Color = rootStyles.getPropertyValue('--player1-color').trim();
 let player2Color = rootStyles.getPropertyValue('--player2-color').trim();
+let neutralTileColor = rootStyles.getPropertyValue('--neutral-tile-color').trim();
 // Set flip animation duration on load
 document.styleSheets[0].insertRule(`.flipped { animation: flip ${flipDuration}ms ease-in-out; }`, 0);
 
@@ -28,6 +29,9 @@ const themeSelect = document.getElementById('themeSelect');
 const boardOrientationSelect = document.getElementById('boardOrientation');
 
 const CURSOR_SHAPES = {
+    singleTile: [
+        {dx: 0, dy: 0}
+    ],
     plus: [
         {dx: 0, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}
     ],
@@ -61,8 +65,9 @@ let currentCursorShapeIndex = 0;
 joinButton.addEventListener('click', () => {
     const playerName = playerNameInput.value.trim();
     const boardOrientation = boardOrientationSelect.value;
+    const boardSize = document.getElementById('boardSize').value;
     if (playerName) {
-        socket.emit('join', {name: playerName, boardOrientation});
+        socket.emit('join', {name: playerName, boardOrientation, boardSize});
         landingPage.style.display = 'none';
         gamePage.style.display = 'block';
     }
@@ -100,7 +105,7 @@ function handleTileClick(x, y) {
             }
         });
 
-        socket.emit('move', {player, selectedTiles});
+        socket.emit('move', {player, selectedTiles, clickedTile: {x, y}});
     }
 }
 
@@ -223,13 +228,23 @@ function addTileHoverListeners(tileElement, x, y) {
 function renderBoard() {
     const boardElement = document.getElementById('board');
     boardElement.innerHTML = ''; // Clear existing board
+    const size = board.length;
+
+    boardElement.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+    boardElement.style.gridTemplateRows = `repeat(${size}, 30px)`;
 
     // Render tiles
     board.forEach((row, x) => {
         row.forEach((tileOwner, y) => {
             const tileElement = document.createElement('div');
             tileElement.className = 'tile';
-            tileElement.style.backgroundColor = tileOwner === 1 ? player1Color : player2Color;
+
+            if (tileOwner === 0) {
+                tileElement.style.backgroundColor = neutralTileColor;
+            } else {
+                tileElement.style.backgroundColor = tileOwner === 1 ? player1Color : player2Color;
+            }
+
             tileElement.dataset.x = x;
             tileElement.dataset.y = y;
             tileElement.addEventListener('click', () => handleTileClick(x, y));
@@ -249,16 +264,16 @@ function renderBoard() {
         });
     });
 
-    // Render territory borders
-    for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-            const territoryBorder = document.createElement('div');
-            territoryBorder.className = 'territory-border';
-            territoryBorder.style.left = `${i * 150}px`; // Adjusted for border and gap
-            territoryBorder.style.top = `${j * 150}px`; // Adjusted for border and gap
-            boardElement.appendChild(territoryBorder);
-        }
-    }
+    // // Render territory borders
+    // for (let i = 0; i < 4; i++) {
+    //     for (let j = 0; j < 4; j++) {
+    //         const territoryBorder = document.createElement('div');
+    //         territoryBorder.className = 'territory-border';
+    //         territoryBorder.style.left = `${i * 150}px`; // Adjusted for border and gap
+    //         territoryBorder.style.top = `${j * 150}px`; // Adjusted for border and gap
+    //         boardElement.appendChild(territoryBorder);
+    //     }
+    // }
 }
 
 function rotateCursorShape() {

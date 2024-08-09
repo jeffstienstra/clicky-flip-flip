@@ -6,6 +6,7 @@
     <title>Clicky Flip Flip</title>
     <style>
         :root {
+            --neutral-tile-color: rgb(124, 116, 93);
             --player1-color: #445732;
             --player1-hover-color: #5f724e;
             --player2-color: #728448;
@@ -183,9 +184,14 @@
         <div class="board-orientation container">
             <label for="boardOrientation">Game Mode:</label>
             <select id="boardOrientation">
-                <option value="islands">Islands</option>
                 <option value="checkerboard">Checkerboard</option>
+                <option value="islands">Islands</option>
                 <option value="topBottomSplit">Top vs Bottom</option>
+            </select>
+            <label for="boardSize">Board Size:</label>
+            <select id="boardSize">
+                <option value="8">Small (8x8)</option>
+                <option value="20">Large (20x20)</option>
             </select>
         </div>
         <div class="container">

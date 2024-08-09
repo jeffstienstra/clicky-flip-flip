@@ -9,7 +9,7 @@ const io = socketIo(server);
 app.use(express.static('public'));
 
 // Constants
-const BOARD_SIZE = 20;
+let BOARD_SIZE;
 const FLIP_DURATION = 500; // Duration of the flip animation in milliseconds
 const MAX_PLAYERS_PER_GAME = 2;
 const CARDINAL_DIRECTIONS = [
@@ -50,16 +50,27 @@ const games = {};
 let boardOrientation;
 let board;
 
-function initializeBoard() {
+function initializeBoard(boardOrientation, boardSize) {
+    BOARD_SIZE = boardSize;
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
     switch (boardOrientation) {
         case 'checkerboard':
-            for (let i = 0; i < BOARD_SIZE; i += 5) {
-                for (let j = 0; j < BOARD_SIZE; j += 5) {
-                    const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
-                    for (let x = i; x < i + 5; x++) {
-                        for (let y = j; y < j + 5; y++) {
-                            board[x][y] = playerOwner;
+            if (boardSize == 8) {
+                // 8x8 Checkerboard
+                for (let x = 0; x < boardSize; x++) {
+                    for (let y = 0; y < boardSize; y++) {
+                        board[x][y] = 0; // neutral tile
+                    }
+                }
+            } else {
+                // 20x20 Checkerboard with 5x5 groups
+                for (let i = 0; i < boardSize; i += 5) {
+                    for (let j = 0; j < boardSize; j += 5) {
+                        const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
+                        for (let x = i; x < i + 5; x++) {
+                            for (let y = j; y < j + 5; y++) {
+                                board[x][y] = playerOwner;
+                            }
                         }
                     }
                 }
@@ -238,12 +249,11 @@ io.on('connection', (socket) => {
 
     socket.on('join', (data) => {
         console.log('join:', data);
-        boardOrientation = data.boardOrientation;
-        const name = data.name;
+        const {name, boardOrientation, boardSize} = data;
         const {gameRoom, player} = addPlayerToGame(socket, name);
         if (games[gameRoom].players.length === 1) {
             games[gameRoom].boardOrientation = boardOrientation;
-            games[gameRoom].board = initializeBoard(boardOrientation);
+            games[gameRoom].board = initializeBoard(boardOrientation, parseInt(boardSize));
         }
 
         socket.emit('assignPlayer', {
@@ -298,7 +308,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('move', async (data) => {
-        const {player, selectedTiles} = data;
+        const {player, selectedTiles, clickedTile} = data;
         const gameRoom = getPlayerRoom(player.id);
         const game = games[gameRoom];
 
@@ -328,7 +338,7 @@ io.on('connection', (socket) => {
             }
 
             calculatePlayerScore([...(captureGroups.flat() || [])], player, gameRoom);
-            game.lastFlippedTile = selectedTiles[selectedTiles.length - 1]; // Update the last flipped tile
+            game.lastFlippedTile = clickedTile;
 
             game.currentPlayerNumber = togglePlayerTurn(game);
 
