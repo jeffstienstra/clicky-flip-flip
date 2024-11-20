@@ -63,7 +63,7 @@ let currentCursorShapeIndex = 0;
 /* ================================== */
 
 joinButton.addEventListener('click', () => {
-    const playerName = playerNameInput.value.trim();
+    const playerName = playerNameInput.value.trim() || 'Player';
     const boardOrientation = boardOrientationSelect.value;
     const boardSize = document.getElementById('boardSize').value;
     if (playerName) {

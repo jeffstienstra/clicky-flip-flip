@@ -72,6 +72,7 @@
             position: relative;
             border: 5px solid var(--board-border-color);
             border-radius: 5px;
+            width: fit-content;
         }
         .tile {
             width: 30px;
@@ -154,6 +155,9 @@
             display: flex;
             justify-content: space-between;
         }
+        .score {
+            /* max-width: 50%; */
+        }
         .lock-icon {
             position: absolute;
             top: 6px;
@@ -195,7 +199,7 @@
             </select>
         </div>
         <div class="container">
-            <input type="text" id="playerName" placeholder="Enter your name" value="test"/>
+            <input type="text" id="playerName" disabled="true" placeholder="Enter your name" value="You"/>
             <button id="joinButton">Join</button>
         </div>
     </div>
@@ -207,11 +211,11 @@
             <div class="players-container">
                 <div id="youContainer">
                     <div class="player-color-indicator" id="youColor"></div>
-                    <p id="youScore">You: 0</p>
+                    <p id="youScore" class="score">You: 0</p>
                 </div>
                 <div id="opponentContainer">
                     <div class="player-color-indicator" id="opponentColor"></div>
-                    <p id="opponentScore">Opponent: 0</p>
+                    <p id="opponentScore" class="score">Opponent: 0</p>
                 </div>
             </div>
         </div>
