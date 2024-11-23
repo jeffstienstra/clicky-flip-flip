@@ -47,24 +47,51 @@ const PLAYER_NUMBER_ENUM = JSON.parse(fs.readFileSync('playerNumberEnum.json')).
 
 // Game state
 const games = {};
-let boardOrientation;
 let board;
-let winPercentage = 10;
+let boardOrientation;
+let winPercentage;
 
 function initializeBoard(boardOrientation, boardSize) {
     BOARD_SIZE = boardSize;
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
     switch (boardOrientation) {
-        case 'checkerboard':
+        case 'standard':
             if (boardSize == 8) {
-                // 8x8 Checkerboard
+                // 8x8 - Neutral tiles
+                winPercentage = 10; //TODO: change back to 50%
                 for (let x = 0; x < boardSize; x++) {
                     for (let y = 0; y < boardSize; y++) {
                         board[x][y] = 0; // neutral tile
                     }
                 }
-            } else {
-                // 20x20 Checkerboard with 5x5 groups
+            } else if (boardSize == 20) {
+                // 20x20 - Neutral tiles
+                winPercentage = 50;
+                for (let x = 0; x < boardSize; x++) {
+                    for (let y = 0; y < boardSize; y++) {
+                        board[x][y] = 0; // neutral tile
+                    }
+                }
+            }
+            break;
+        case 'checkerboard':
+            // 8x8 board with 2x2 checkerboard groups
+            winPercentage = 75;
+            if (boardSize == 8) {
+                for (let i = 0; i < boardSize; i += 2) {
+                    for (let j = 0; j < boardSize; j += 2) {
+                        const playerOwner = (i / 2 + j / 2) % 2 === 0 ? 1 : 2;
+                        for (let x = i; x < i + 2; x++) {
+                            for (let y = j; y < j + 2; y++) {
+                                board[x][y] = playerOwner;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (boardSize == 20) {
+                // 20x20 - Checkerboard with 5x5 groups
+                winPercentage = 75;
                 for (let i = 0; i < boardSize; i += 5) {
                     for (let j = 0; j < boardSize; j += 5) {
                         const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
@@ -76,39 +103,42 @@ function initializeBoard(boardOrientation, boardSize) {
                     }
                 }
             }
+        break;
+        case 'islands':
+            createRandomIslands();
             break;
-            case 'islands':
-                createRandomIslands();
-                break;
-            case 'topBottomSplit':
-                for (let y = 0; y < BOARD_SIZE; y++) {
-                    for (let x = 0; x < BOARD_SIZE; x++) {
-                        if (x < BOARD_SIZE / 2) {
-                            if (x === 0 || y === 0 || y === BOARD_SIZE - 1) {
-                                board[x][y] = 2; // Player 2's color
-                            } else {
-                                board[x][y] = 1; // Player 1's color
-                            }
+        case 'topBottomSplit':
+            winPercentage = 75;
+            for (let y = 0; y < BOARD_SIZE; y++) {
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    if (x < BOARD_SIZE / 2) {
+                        if (x === 0 || y === 0 || y === BOARD_SIZE - 1) {
+                            board[x][y] = 2; // Player 2's color
                         } else {
-                            if (x === BOARD_SIZE - 1 || y === 0 || y === BOARD_SIZE - 1) {
-                                board[x][y] = 1; // Player 1's color
-                            } else {
-                                board[x][y] = 2; // Player 2's color
-                            }
+                            board[x][y] = 1; // Player 1's color
+                        }
+                    } else {
+                        if (x === BOARD_SIZE - 1 || y === 0 || y === BOARD_SIZE - 1) {
+                            board[x][y] = 1; // Player 1's color
+                        } else {
+                            board[x][y] = 2; // Player 2's color
                         }
                     }
                 }
-                break;
-            default:
-                console.log('Unknown board orientation:', boardOrientation);
-                break;
+            }
+            break;
+        default:
+        console.log('Unknown board orientation:', boardOrientation);
+        break;
     }
     board.totalTiles = BOARD_SIZE * BOARD_SIZE;
+    board.winPercentage = winPercentage;
     return board;
 }
 
 function createRandomIslands() {
     // Step 1: Split the board into two halves
+    winPercentage = 75;
     for (let y = 0; y < BOARD_SIZE; y++) {
         for (let x = 0; x < BOARD_SIZE; x++) {
             if (y < BOARD_SIZE / 2) {
@@ -154,7 +184,7 @@ function isCenterColumnTile(x) {
 function createGame() {
     const gameRoom = `game_${Object.keys(games).length + 1}`;
     games[gameRoom] = {
-        // board: initializeBoard(boardOrientation),
+        board: initializeBoard(boardOrientation),
         currentPlayerNumber: 1,
         lastFlippedTile: null,
         players: [],
@@ -180,7 +210,7 @@ function addPlayerToGame(socket, name) {
     const playerNumber = games[gameRoom].players.length + 1;
     const player = {
         id: socket.id,
-        name,
+        name: name,
         playerNumber,
         score: 0,
         theme: 'Forest'
@@ -308,7 +338,8 @@ io.on('connection', (socket) => {
             io.to(gameRoom).emit('initializeBoard', {
                 board: games[gameRoom].board,
                 currentPlayerNumber: games[gameRoom].currentPlayerNumber,
-                players: games[gameRoom].players
+                players: games[gameRoom].players,
+                winPercentage: winPercentage
             });
         }
     });
@@ -329,9 +360,9 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         const gameRoom = removePlayerFromGame(socket.id);
         if (gameRoom) {
-            resetPlayerScores(gameRoom);
-            games[gameRoom].board = initializeBoard(); // Reset the board
-            games[gameRoom].currentPlayerNumber = 1; // Reset the turn to player 1
+            // resetPlayerScores(gameRoom);
+            // games[gameRoom].board = initializeBoard(); // Reset the board
+            // games[gameRoom].currentPlayerNumber = 1; // Reset the turn to player 1
             io.to(gameRoom).emit('playerDisconnected', {
                 board: games[gameRoom].board,
                 players: games[gameRoom].players,

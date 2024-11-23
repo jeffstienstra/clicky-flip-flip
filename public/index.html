@@ -170,7 +170,8 @@
             /* display: flex;
             justify-content: space-between; */
         }
-        .score {
+        .you-score {
+            font-weight: bold;
             /* max-width: 50%; */
         }
         .lock-icon {
@@ -257,6 +258,49 @@
             display: none;
         }
 
+                #progressBarContainer {
+            width: 100%;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        #progressBar {
+            width: 80%;
+            height: 20px;
+            background-color: var(--neutral-tile-color);
+            position: relative;
+            border: 1px solid var(--tile-border-color);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #player1Progress, #player2Progress {
+            height: 100%;
+            position: absolute;
+            top: 0;
+        }
+
+        #player1Progress {
+            background-color: var(--player1-color);
+            left: 0;
+        }
+
+        #player2Progress {
+            background-color: var(--player2-color);
+            right: 0;
+        }
+
+        #centerLine {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 2px;
+            background-color: var(--tile-border-color);
+            z-index: 1; /* Ensure it is above the progress bars */
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -274,6 +318,7 @@
             <div class="game-mode-container">
                 <label for="boardOrientation">Game Mode:</label>
                 <select id="boardOrientation">
+                    <option value="standard">Standard</option>
                     <option value="checkerboard">Checkerboard</option>
                     <option value="islands">Islands</option>
                     <option value="topBottomSplit">Top vs Bottom</option>
@@ -299,16 +344,22 @@
         <div id="scoreboard" class="players-container">
             <div id="youContainer">
                 <div class="player-color-indicator" id="youColor"></div>
-                <p id="youScore" class="score">You: 0</p>
+                <p id="youScore" class="you-score">You: 0</p>
             </div>
             <div id="opponentContainer">
                 <div class="player-color-indicator" id="opponentColor"></div>
-                <p id="opponentScore" class="score">Opponent: 0</p>
+                <p id="opponentScore" class="opponent-score">Opponent: --</p>
             </div>
         </div>
-
-        <div id="board" class="board"></div>
+        <div id="progressBarContainer">
+            <div id="progressBar">
+                <div id="centerLine"></div>
+                <div id="player1Progress"></div>
+                <div id="player2Progress"></div>
+            </div>
+        </div>
         <p id="turnIndicator">Waiting for players...</p>
+        <div id="board" class="board"></div>
 
         <!-- Dropdown for instructions -->
         <div class="dropdown">
@@ -319,6 +370,12 @@
                 <ul>
                     <li>Surround a tile on 3 sides to flip it to your color.</li>
                     <li>A flipped tile can cause subsequent flips.</li>
+                    <li>🔒: The tile is locked.</li>
+                    <ul>
+                        <li>It cannot be clicked.</li>
+                        <li>It can still be flipped by the cursor or if surrounded on at least 3 sides by another color.</li>
+
+                    </ul>
                     <li>Change Cursor Shape: Mouse scroll wheel</li>
                     <li>Rotate Cursor: R Key</li>
                 </ul>

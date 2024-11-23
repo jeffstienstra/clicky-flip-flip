@@ -1,6 +1,7 @@
 const socket = io();
 let board;
 let player = {};
+let winPercentage;
 let currentPlayerNumber;
 let waitingForOpponent = true;
 let lastFlippedTile = null;
@@ -63,14 +64,13 @@ let currentCursorShapeIndex = 0;
 /* ================================== */
 
 joinButton.addEventListener('click', () => {
-    const playerName = playerNameInput.value.trim() || 'Player';
+    const playerName = playerNameInput.value.trim() || '';
     const boardOrientation = boardOrientationSelect.value;
     const boardSize = document.getElementById('boardSize').value;
-    if (playerName) {
-        socket.emit('join', {name: playerName, boardOrientation, boardSize});
-        landingPage.style.display = 'none';
-        gamePage.style.display = 'block';
-    }
+
+    socket.emit('join', {name: playerName, boardOrientation, boardSize});
+    landingPage.style.display = 'none';
+    gamePage.style.display = 'block';
 });
 
 // themeSelect.addEventListener('change', (event) => {
@@ -116,8 +116,8 @@ function handleTileClick(x, y) {
 
 socket.on('initializeBoard', (data) => {
     board = data.board;
-    console.log('board', board);
     currentPlayerNumber = data.currentPlayerNumber;
+    winPercentage = data.winPercentage;
     const players = data.players;
     renderBoard();
     updateScores(players);
@@ -195,8 +195,7 @@ socket.on('assignPlayer', (data) => {
 socket.on('gameOver', (data) => {
     const players = data.players;
     updateScores(players);
-    updateTurnIndicator();
-    alert('Game over!');
+    setGameOverState(players);
 });
 
 document.addEventListener('wheel', (event) => {
@@ -419,17 +418,55 @@ function updateTurnIndicator() {
     }
 }
 
+function setGameOverState(players) {
+    //check player scores, if player1 score is greater than 50% then player1 wins
+    //if player2 score is greater than 50% then player2 wins
+    //if player1 and player2 scores are equal then it's a draw
+    const player1 = Object.values(players).find(p => p.playerNumber === 1);
+    const player2 = Object.values(players).find(p => p.playerNumber === 2);
+
+    if (player1.score > winPercentage) {
+        // use player1.name if available, otherwise use 'Player 1'
+        alert(`${player1.name} wins!`);
+    }
+    else if (player2.score > winPercentage) {
+        alert(`${player2.name} wins!`);
+    }
+
+    setTimeout(() => {
+        location.reload();
+    }, 2000);
+
+}
+
 function updateScores(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
+
     if (you) {
-        document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}%`;
+        document.getElementById('youScore').textContent = `${player.name || 'You'}: ${you.score || 0}%`;
     }
 
     if (opponent) {
         document.getElementById('opponentScore').textContent = `${opponent.name || 'Opponent'}: ${opponent.score || 0}%`;
-    } else {
-        document.getElementById('opponentScore').textContent = `Opponent: 0`;
+    }
+
+    updateProgressBar(players);
+}
+
+function updateProgressBar(players) {
+    const you = Object.values(players).find(p => p.id === socket.id);
+    const opponent = Object.values(players).find(p => p.id !== socket.id);
+
+    if (you && opponent) {
+        const player1Percentage = you.playerNumber === 1 ? you.score : opponent.score;
+        const player2Percentage = you.playerNumber === 2 ? you.score : opponent.score;
+
+        const player1Progress = (player1Percentage / winPercentage) * 50; // 50% is the center
+        const player2Progress = (player2Percentage / winPercentage) * 50; // 50% is the center
+
+        document.getElementById('player1Progress').style.width = `${player1Progress}%`;
+        document.getElementById('player2Progress').style.width = `${player2Progress}%`;
     }
 }
 
