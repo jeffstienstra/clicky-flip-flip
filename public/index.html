@@ -20,20 +20,33 @@
             --tile-border-hover-player2: #ced7ab; */
             --territory-border-color: #27301c;
             --text-color: #9fb060;
+            --board-width: 0;
+        }
+        p {
+            margin: 0;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        ul {
+            margin: 0;
+            padding-left: 5px;
+        }
+        li {
+            margin: 10px 0;
         }
         body {
             font-family: Arial, sans-serif;
-            /* font-size: 2rem; */
             background-color: var(--background-color);
             color: var(--text-color);
             display: flex;
-            justify-content: center;
+            /* justify-content: center;
             align-items: center;
-            height: 100vh;
+            height: 100vh; */
             margin: 0;
+            margin-top: 50px;
         }
         label {
-            margin: 10px 0;
+            margin: 5px 0;
         }
         select {
             padding: 3px;
@@ -42,6 +55,7 @@
         }
         input {
             padding: 3px;
+            text-align: center;
         }
         button {
             padding: 10px 20px;
@@ -65,6 +79,7 @@
         }
         .board {
             display: grid;
+            margin: 20px 0;
             grid-template-columns: repeat(20, 30px);
             grid-template-rows: repeat(20, 30px);
             background-color: var(--board-color);
@@ -152,8 +167,8 @@
             align-items: center;
         }
         .players-container {
-            display: flex;
-            justify-content: space-between;
+            /* display: flex;
+            justify-content: space-between; */
         }
         .score {
             /* max-width: 50%; */
@@ -170,15 +185,85 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 0 20px;
+            justify-content: center;
+            /* width: 100%;
+            max-width: 400px; */
+            /* padding: 20px; */
+            margin: auto;
+            box-sizing: border-box;
+        }
+        .game-mode-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .board-size-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
         }
         .board-orientation {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 25px;
+            /* margin-bottom: 25px; */
+        }
+        .name-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0 10px 0;
+        }
+        .dropdown {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .dropdown-toggle {
+            background: var(--player1-color);
+            color: var(--text-color);
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .dropdown-toggle:hover {
+            background: var(--player1-hover-color);
+        }
+
+        .arrow {
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .instructions {
+            padding: 0 10px;
+            background: var(--board-color);
+            width: 100%; /* Ensure the instructions also fill the parent container */
+            display: none;
+        }
+
+        .instructions.visible {
+            display: block;
+            width: var(--board-width);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .instructions.hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -186,42 +271,60 @@
     <div id="landing" class="container">
         <h1>Clicky Flip Flip</h1>
         <div class="board-orientation container">
-            <label for="boardOrientation">Game Mode:</label>
-            <select id="boardOrientation">
-                <option value="checkerboard">Checkerboard</option>
-                <option value="islands">Islands</option>
-                <option value="topBottomSplit">Top vs Bottom</option>
-            </select>
-            <label for="boardSize">Board Size:</label>
-            <select id="boardSize">
-                <option value="8">Small (8x8)</option>
-                <option value="20">Large (20x20)</option>
-            </select>
+            <div class="game-mode-container">
+                <label for="boardOrientation">Game Mode:</label>
+                <select id="boardOrientation">
+                    <option value="checkerboard">Checkerboard</option>
+                    <option value="islands">Islands</option>
+                    <option value="topBottomSplit">Top vs Bottom</option>
+                </select>
+            </div>
+            <div class="board-size-container">
+                <label for="boardSize">Board Size:</label>
+                <select id="boardSize">
+                    <option value="8">Small (8x8)</option>
+                    <option value="20">Large (20x20)</option>
+                </select>
+            </div>
         </div>
-        <div class="container">
-            <input type="text" id="playerName" disabled="true" placeholder="Enter your name" value="You"/>
-            <button id="joinButton">Join</button>
+        <div class="name-container">
+            <input id="playerName" maxlength="18" type="text" placeholder="Name"/>
         </div>
+        <button id="joinButton">Join</button>
     </div>
     <div id="game" class="container">
         <h1>Clicky Flip Flip</h1>
-        <select id="themeSelect"></select>
-        <p id="turnIndicator">Waiting for players...</p>
-        <div id="scoreboard">
-            <div class="players-container">
-                <div id="youContainer">
-                    <div class="player-color-indicator" id="youColor"></div>
-                    <p id="youScore" class="score">You: 0</p>
-                </div>
-                <div id="opponentContainer">
-                    <div class="player-color-indicator" id="opponentColor"></div>
-                    <p id="opponentScore" class="score">Opponent: 0</p>
-                </div>
+        <!-- <select id="themeSelect"></select> -->
+
+        <div id="scoreboard" class="players-container">
+            <div id="youContainer">
+                <div class="player-color-indicator" id="youColor"></div>
+                <p id="youScore" class="score">You: 0</p>
+            </div>
+            <div id="opponentContainer">
+                <div class="player-color-indicator" id="opponentColor"></div>
+                <p id="opponentScore" class="score">Opponent: 0</p>
             </div>
         </div>
+
         <div id="board" class="board"></div>
-        <p>Change cursor: scroll wheel</p>
-        <p>Rotate cursor: R key</p>
+        <p id="turnIndicator">Waiting for players...</p>
+
+        <!-- Dropdown for instructions -->
+        <div class="dropdown">
+            <button class="dropdown-toggle" id="instructionsToggle">
+                Rules <span class="arrow">▼</span>
+            </button>
+            <div class="instructions hidden">
+                <ul>
+                    <li>Surround a tile on 3 sides to flip it to your color.</li>
+                    <li>A flipped tile can cause subsequent flips.</li>
+                    <li>Change Cursor Shape: Mouse scroll wheel</li>
+                    <li>Rotate Cursor: R Key</li>
+                </ul>
+            </div>
+        </div>
+
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -230,6 +333,53 @@
         window.onload = function() {
             document.getElementById('playerName').focus();
         };
+    </script>
+    <script>
+        document.getElementById('instructionsToggle').addEventListener('click', () => {
+            const instructions = document.querySelector('.instructions');
+            const arrow = document.querySelector('.arrow');
+
+            if (instructions.classList.contains('hidden')) {
+                instructions.classList.remove('hidden');
+                instructions.classList.add('visible');
+                arrow.textContent = '▲'; // Change arrow to up
+            } else {
+                instructions.classList.remove('visible');
+                instructions.classList.add('hidden');
+                arrow.textContent = '▼'; // Change arrow to down
+            }
+        });
+        // Function to set the CSS variable
+        function setBoardWidth() {
+            const gameElement = document.getElementById('board');
+            const width = gameElement.offsetWidth; // Get the element's width
+            document.documentElement.style.setProperty('--board-width', `${width-20}px`);
+        }
+
+        // Create a MutationObserver to watch for changes to the element's attributes
+        const observer = new MutationObserver((mutationsList) => {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const gameElement = mutation.target;
+
+                    // Check if the display is no longer 'none'
+                    if (window.getComputedStyle(gameElement).display !== 'none') {
+                        setBoardWidth(); // Set the CSS variable
+                    }
+                }
+            }
+        });
+
+        // Target the #game element
+        const gameElement = document.getElementById('board');
+
+        // Start observing the #game element for attribute changes
+        observer.observe(gameElement, { attributes: true });
+
+        // Optional: Set the board width immediately if it's already visible on load
+        if (window.getComputedStyle(gameElement).display !== 'none') {
+            setBoardWidth();
+        }
     </script>
 </body>
 </html>

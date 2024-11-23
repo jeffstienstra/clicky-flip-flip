@@ -73,10 +73,10 @@ joinButton.addEventListener('click', () => {
     }
 });
 
-themeSelect.addEventListener('change', (event) => {
-    const selectedTheme = event.target.value;
-    socket.emit('requestThemeChange', { playerNumber: player.playerNumber, theme: selectedTheme });
-});
+// themeSelect.addEventListener('change', (event) => {
+//     const selectedTheme = event.target.value;
+//     socket.emit('requestThemeChange', { playerNumber: player.playerNumber, theme: selectedTheme });
+// });
 
 function handleTileClick(x, y) {
     if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
@@ -113,6 +113,15 @@ function handleTileClick(x, y) {
 /* ================================== */
 // Socket listeners
 /* ================================== */
+
+socket.on('initializeBoard', (data) => {
+    board = data.board;
+    console.log('board', board);
+    currentPlayerNumber = data.currentPlayerNumber;
+    const players = data.players;
+    renderBoard();
+    updateScores(players);
+});
 
 socket.on('updateGame', async (data) => {
     board = data.board;
@@ -159,16 +168,16 @@ socket.on('playerDisconnected', (data) => {
     updateTurnIndicator();
 });
 
-socket.on('receiveThemesAndEnums', (data) => {
-    themes = data.THEMES;
-    playerNumberEnum = data.PLAYER_NUMBER_ENUM;
-    Object.keys(themes).forEach(theme => {
-        const option = document.createElement('option');
-        option.value = theme;
-        option.textContent = theme;
-        themeSelect.appendChild(option);
-    });
-});
+// socket.on('receiveThemesAndEnums', (data) => {
+//     themes = data.THEMES;
+//     playerNumberEnum = data.PLAYER_NUMBER_ENUM;
+//     Object.keys(themes).forEach(theme => {
+//         const option = document.createElement('option');
+//         option.value = theme;
+//         option.textContent = theme;
+//         themeSelect.appendChild(option);
+//     });
+// });
 
 socket.on('themeChange', (data) => {
     const { playerNumber, players } = data;
@@ -177,18 +186,17 @@ socket.on('themeChange', (data) => {
     applyTheme(players);
 });
 
-socket.on('initializeBoard', (data) => {
-    board = data.board;
-    currentPlayerNumber = data.currentPlayerNumber;
-    const players = data.players;
-    renderBoard();
-    updateScores(players);
-});
-
 socket.on('assignPlayer', (data) => {
     player = data.player;
     waitingForOpponent = data.waitingForOpponent;
     updateTurnIndicator();
+});
+
+socket.on('gameOver', (data) => {
+    const players = data.players;
+    updateScores(players);
+    updateTurnIndicator();
+    alert('Game over!');
 });
 
 document.addEventListener('wheel', (event) => {
@@ -414,13 +422,12 @@ function updateTurnIndicator() {
 function updateScores(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
-
     if (you) {
-        document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}`;
+        document.getElementById('youScore').textContent = `${player.name}: ${you.score || 0}%`;
     }
 
     if (opponent) {
-        document.getElementById('opponentScore').textContent = `Opponent: ${opponent.score || 0}`;
+        document.getElementById('opponentScore').textContent = `${opponent.name || 'Opponent'}: ${opponent.score || 0}%`;
     } else {
         document.getElementById('opponentScore').textContent = `Opponent: 0`;
     }

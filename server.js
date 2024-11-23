@@ -49,6 +49,7 @@ const PLAYER_NUMBER_ENUM = JSON.parse(fs.readFileSync('playerNumberEnum.json')).
 const games = {};
 let boardOrientation;
 let board;
+let winPercentage = 10;
 
 function initializeBoard(boardOrientation, boardSize) {
     BOARD_SIZE = boardSize;
@@ -102,6 +103,7 @@ function initializeBoard(boardOrientation, boardSize) {
                 console.log('Unknown board orientation:', boardOrientation);
                 break;
     }
+    board.totalTiles = BOARD_SIZE * BOARD_SIZE;
     return board;
 }
 
@@ -181,7 +183,7 @@ function addPlayerToGame(socket, name) {
         name,
         playerNumber,
         score: 0,
-        theme: 'SNES'
+        theme: 'Forest'
     };
     games[gameRoom].players.push(player);
     socket.join(gameRoom);
@@ -200,10 +202,42 @@ function removePlayerFromGame(socketId) {
     return gameRoom;
 }
 
-function calculatePlayerScore(flippedTiles, player, gameRoom) {
+function calculatePlayerScoreIncrementing(flippedTiles, player, gameRoom) {
     const playerInGame = games[gameRoom].players.find(p => p.id === player.id);
+    // constant increase in score - 1 point per tile flipped
     if (playerInGame) {
         playerInGame.score += flippedTiles.length;
+    }
+}
+
+function calculatePlayerScorePercentage(player, gameRoom) {
+    const totalTiles = games[gameRoom].board.totalTiles;
+    let player1Tiles = 0;
+    let player2Tiles = 0;
+    games[gameRoom].board.forEach(row => {
+        row.forEach(tile => {
+            if (tile === 1) {
+                player1Tiles++;
+            } else if (tile === 2) {
+                player2Tiles++;
+            }
+        });
+    });
+    // Calculate the percentage of tiles owned by each player and round to the nearest whole number
+    const player1Percentage = Math.round((player1Tiles / totalTiles) * 100);
+    const player2Percentage = Math.round((player2Tiles / totalTiles) * 100);
+    games[gameRoom].players[0].score = player1Percentage;
+    games[gameRoom].players[1].score = player2Percentage;
+}
+
+function checkIfGameOver(gameRoom) {
+    const player1Percentage = games[gameRoom].players[0].score;
+    const player2Percentage = games[gameRoom].players[1].score;
+    if (player1Percentage >= winPercentage || player2Percentage >= winPercentage) {
+        io.to(gameRoom).emit('gameOver', {
+            winner: player1Percentage > player2Percentage ? 1 : 2,
+            players: games[gameRoom].players
+        });
     }
 }
 
@@ -337,12 +371,12 @@ io.on('connection', (socket) => {
                 flippedTiles = newFlippedTiles;
             }
 
-            calculatePlayerScore([...(captureGroups.flat() || [])], player, gameRoom);
+            // calculatePlayerScoreIncrementing([...(captureGroups.flat() || [])], player, gameRoom);
+            calculatePlayerScorePercentage(player, gameRoom);
             game.lastFlippedTile = clickedTile;
 
             game.currentPlayerNumber = togglePlayerTurn(game);
 
-            // Emit the updated game state immediately
             io.to(gameRoom).emit('updateGame', {
                 board: game.board,
                 players: game.players,
@@ -352,6 +386,7 @@ io.on('connection', (socket) => {
                 waitingForOpponent: game.players.length < MAX_PLAYERS_PER_GAME
             });
         }
+        checkIfGameOver(gameRoom);
     });
 
 });
