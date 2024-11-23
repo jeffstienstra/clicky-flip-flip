@@ -58,7 +58,7 @@ function initializeBoard(boardOrientation, boardSize) {
         case 'standard':
             if (boardSize == 8) {
                 // 8x8 - Neutral tiles
-                winPercentage = 10; //TODO: change back to 50%
+                winPercentage = 50;
                 for (let x = 0; x < boardSize; x++) {
                     for (let y = 0; y < boardSize; y++) {
                         board[x][y] = 0; // neutral tile
