@@ -419,7 +419,6 @@ function updateTurnIndicator() {
 }
 
 function setGameOverState(players) {
-    console.log('gameOver', players);
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
 

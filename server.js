@@ -159,7 +159,6 @@ function createRandomIslands() {
 }
 
 function placeIsland(shape, playerNumber, startX, startY) {
-    console.log('startX:', startX, 'startY:', startY);
     shape.forEach(({dx, dy}) => {
         const x = startX + dx;
         const y = startY + dy;
@@ -312,7 +311,6 @@ io.on('connection', (socket) => {
     socket.emit('receiveThemesAndEnums', {THEMES, PLAYER_NUMBER_ENUM});
 
     socket.on('join', (data) => {
-        console.log('join:', data);
         const {name, boardOrientation, boardSize} = data;
         const {gameRoom, player} = addPlayerToGame(socket, name);
         if (games[gameRoom].players.length === 1) {
