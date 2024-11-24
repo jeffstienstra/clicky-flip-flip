@@ -422,7 +422,7 @@ function setGameOverState(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
 
-    const gameOverMessage = you.score > winPercentage ? `${you.name || 'You'} win!` : 'You lose.';
+    const gameOverMessage = `${you.score > winPercentage ? `${you.name || 'You'} win!` : 'You lose.'} ${you.score}% to ${opponent.score}%`;
 
     // Show the custom modal dialog
     const modal = document.getElementById('gameOverModal');
