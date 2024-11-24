@@ -192,9 +192,9 @@ socket.on('assignPlayer', (data) => {
     updateTurnIndicator();
 });
 
-socket.on('gameOver', (data) => {
+socket.on('gameOver', async (data) => {
     const players = data.players;
-    updateScores(players);
+    await updateScores(players);
     setGameOverState(players);
 });
 
@@ -419,39 +419,47 @@ function updateTurnIndicator() {
 }
 
 function setGameOverState(players) {
-    //check player scores, if player1 score is greater than 50% then player1 wins
-    //if player2 score is greater than 50% then player2 wins
-    //if player1 and player2 scores are equal then it's a draw
-    const player1 = Object.values(players).find(p => p.playerNumber === 1);
-    const player2 = Object.values(players).find(p => p.playerNumber === 2);
-
-    if (player1.score > winPercentage) {
-        // use player1.name if available, otherwise use 'Player 1'
-        alert(`${player1.name} wins!`);
-    }
-    else if (player2.score > winPercentage) {
-        alert(`${player2.name} wins!`);
-    }
-
-    setTimeout(() => {
-        location.reload();
-    }, 2000);
-
-}
-
-function updateScores(players) {
+    console.log('gameOver', players);
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
 
-    if (you) {
-        document.getElementById('youScore').textContent = `${player.name || 'You'}: ${you.score || 0}%`;
-    }
+    const gameOverMessage = you.score > winPercentage ? `${you.name || 'You'} win!` : 'You lose.';
 
-    if (opponent) {
-        document.getElementById('opponentScore').textContent = `${opponent.name || 'Opponent'}: ${opponent.score || 0}%`;
-    }
+    // Show the custom modal dialog
+    const modal = document.getElementById('gameOverModal');
+    const message = document.getElementById('gameOverMessage');
+    const button = document.getElementById('gameOverButton');
 
-    updateProgressBar(players);
+    message.textContent = gameOverMessage;
+    modal.style.display = 'block';
+
+    button.onclick = function() {
+        modal.style.display = 'none';
+        location.reload(); // Reload the page when the button is pressed
+    };
+}
+
+function updateScores(players) {
+    return new Promise((resolve) => {
+        const you = Object.values(players).find(p => p.id === socket.id);
+        const opponent = Object.values(players).find(p => p.id !== socket.id);
+
+        if (you) {
+            document.getElementById('youScore').textContent = `${player.name || 'You'}: ${you.score || 0}%`;
+        }
+
+        if (opponent) {
+            document.getElementById('opponentScore').textContent = `${opponent.name || 'Opponent'}: ${opponent.score || 0}%`;
+        }
+
+        updateProgressBar(players);
+
+        // Assuming renderBoard and other animations are handled here
+        // Wait for animations to complete before resolving the Promise
+        setTimeout(() => {
+            resolve();
+        }, 500); // the FLIP_DURATION. Use the duration of the longest animation
+    });
 }
 
 function updateProgressBar(players) {
