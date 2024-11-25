@@ -414,9 +414,9 @@ function updateTurnIndicator() {
     if (waitingForOpponent) {
         turnIndicator.textContent = "Waiting for an opponent to join...";
     } else if (player.playerNumber === currentPlayerNumber) {
-        turnIndicator.textContent = "It's your turn!";
+        turnIndicator.textContent = "Your turn!";
     } else {
-        turnIndicator.textContent = "Waiting for opponent's turn...";
+        turnIndicator.textContent = "Opponent's turn...";
     }
 }
 
