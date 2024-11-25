@@ -29,7 +29,7 @@
         }
         ul {
             margin: 0;
-            padding-left: 5px;
+            padding: 0 20px 0 20px;
         }
         li {
             margin: 10px 0;
@@ -218,7 +218,8 @@
             margin: 20px 0 10px 0;
         }
         .dropdown {
-            width: 100%;
+            display: flex;
+            flex-direction: column;
             margin-bottom: 20px;
         }
 
@@ -241,7 +242,7 @@
             margin-left: 10px;
         }
 
-        .instructions {
+        .instructions .controls {
             padding: 0 10px;
             background: var(--board-color);
             width: 100%; /* Ensure the instructions also fill the parent container */
@@ -255,6 +256,16 @@
         }
 
         .instructions.hidden {
+            display: none;
+        }
+
+        .controls.visible {
+            display: block;
+            width: var(--board-width);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .controls.hidden {
             display: none;
         }
 
@@ -403,6 +414,7 @@
                 <p id="opponentScore" class="opponent-score">Opponent: --</p>
             </div>
         </div>
+        <p id="turnIndicator">Waiting for players...</p>
         <div id="progressBarContainer">
             <div id="winPercentageLabel"></div>
             <div id="progressBar">
@@ -411,26 +423,33 @@
                 <div id="player2Progress"></div>
             </div>
         </div>
-        <p id="turnIndicator">Waiting for players...</p>
         <div id="board" class="board"></div>
 
         <!-- Dropdown for instructions -->
         <div class="dropdown">
             <button class="dropdown-toggle" id="instructionsToggle">
-                Rules <span class="arrow">▼</span>
+                Rules <span class="instructionsArrow">▼</span>
             </button>
             <div class="instructions hidden">
                 <ul>
-                    <li>Surround a tile on 3 sides to flip it to your color.</li>
-                    <li>A flipped tile can cause subsequent flips.</li>
-                    <li>🔒: The tile is locked.</li>
+                    <li><strong>Objective:</strong> Take turns flipping tiles to own more of the board than the Goal percentage.</li>
+                    <li><strong>Tile Selection:</strong> Hover over the board to show your cursor. Click to flip tiles under it plus any nearby tiles surrounded on three sides by your color.</li>
+                    <li><strong>Flip Flips:</strong> A flipped tile can cause subsequent flips.</li>
+                    <li><strong>Locked Tiles 🔒:</strong> The previously selected tile is now locked.</li>
                     <ul>
-                        <li>It cannot be clicked.</li>
-                        <li>It can still be flipped by the cursor or if surrounded on at least 3 sides by another color.</li>
-
+                        <li>Locked tiles cannot be clicked.</li>
+                        <li>Locked tiles can still be flipped by the cursor or if surrounded on at least 3 sides by another color.</li>
                     </ul>
-                    <li>Change Cursor Shape: Mouse scroll wheel</li>
-                    <li>Rotate Cursor: R Key</li>
+                </ul>
+            </div>
+
+            <button class="dropdown-toggle" id="controlsToggle">
+                Controls <span class="controlsArrow">▼</span>
+            </button>
+            <div class="controls hidden">
+                <ul>
+                    <li><strong>Change Cursor Shape:</strong> Mouse scroll wheel</li>
+                    <li><strong>Rotate Cursor:</strong> R Key</li>
                 </ul>
             </div>
         </div>
@@ -453,16 +472,31 @@
     <script>
         document.getElementById('instructionsToggle').addEventListener('click', () => {
             const instructions = document.querySelector('.instructions');
-            const arrow = document.querySelector('.arrow');
+            const arrow = document.querySelector('.instructionsArrow');
 
             if (instructions.classList.contains('hidden')) {
                 instructions.classList.remove('hidden');
                 instructions.classList.add('visible');
-                arrow.textContent = '▲'; // Change arrow to up
+                arrow.textContent = '▲';
             } else {
                 instructions.classList.remove('visible');
                 instructions.classList.add('hidden');
-                arrow.textContent = '▼'; // Change arrow to down
+                arrow.textContent = '▼';
+            }
+        });
+
+        document.getElementById('controlsToggle').addEventListener('click', () => {
+            const instructions = document.querySelector('.controls');
+            const arrow = document.querySelector('.controlsArrow');
+
+            if (instructions.classList.contains('hidden')) {
+                instructions.classList.remove('hidden');
+                instructions.classList.add('visible');
+                arrow.textContent = '▲';
+            } else {
+                instructions.classList.remove('visible');
+                instructions.classList.add('hidden');
+                arrow.textContent = '▼';
             }
         });
 
@@ -480,7 +514,7 @@
         function setBoardWidth() {
             const gameElement = document.getElementById('board');
             const width = gameElement.offsetWidth; // Get the element's width
-            document.documentElement.style.setProperty('--board-width', `${width-20}px`);
+            document.documentElement.style.setProperty('--board-width', `${width}px`);
         }
 
         // Create a MutationObserver to watch for changes to the element's attributes
