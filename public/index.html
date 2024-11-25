@@ -465,6 +465,17 @@
                 arrow.textContent = '▼'; // Change arrow to down
             }
         });
+
+        document.getElementById('boardOrientation').addEventListener('change', (event) => {
+            const boardSizeSelect = document.getElementById('boardSize');
+            if (event.target.value === 'islands') {
+                boardSizeSelect.value = '20';
+                boardSizeSelect.disabled = true;
+            } else {
+                boardSizeSelect.disabled = false;
+            }
+        });
+
         // Function to set the CSS variable
         function setBoardWidth() {
             const gameElement = document.getElementById('board');
