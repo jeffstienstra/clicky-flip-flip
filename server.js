@@ -126,9 +126,6 @@ function initializeBoard(boardOrientation, boardSize) {
                     }
                 }
             }
-            break;
-        default:
-        console.log('Unknown board orientation:', boardOrientation);
         break;
     }
     board.totalTiles = BOARD_SIZE * BOARD_SIZE;
@@ -187,7 +184,8 @@ function createGame() {
         currentPlayerNumber: 1,
         lastFlippedTile: null,
         players: [],
-        boardOrientation: 'checkerboard' // Default orientation
+        boardOrientation: boardOrientation || 'standard',
+        winPercentage
     };
     return gameRoom;
 }
@@ -260,12 +258,13 @@ function calculatePlayerScorePercentage(player, gameRoom) {
 }
 
 function checkIfGameOver(gameRoom) {
-    const player1Percentage = games[gameRoom].players[0].score;
-    const player2Percentage = games[gameRoom].players[1].score;
+    const game = games[gameRoom];
+    const player1Percentage = game.players[0].score;
+    const player2Percentage = game.players[1].score;
     if (player1Percentage >= winPercentage || player2Percentage >= winPercentage) {
         io.to(gameRoom).emit('gameOver', {
             winner: player1Percentage > player2Percentage ? 1 : 2,
-            players: games[gameRoom].players
+            players: game.players
         });
     }
 }
@@ -329,7 +328,8 @@ io.on('connection', (socket) => {
             currentPlayerNumber: games[gameRoom].currentPlayerNumber,
             lastFlippedTile: games[gameRoom].lastFlippedTile,
             captureGroups: [], // Initially empty
-            waitingForOpponent: games[gameRoom].players.length < MAX_PLAYERS_PER_GAME
+            waitingForOpponent: games[gameRoom].players.length < MAX_PLAYERS_PER_GAME,
+            winPercentage
         });
 
         if (games[gameRoom].players.length === MAX_PLAYERS_PER_GAME) {
@@ -412,7 +412,8 @@ io.on('connection', (socket) => {
                 currentPlayerNumber: game.currentPlayerNumber,
                 lastFlippedTile: game.lastFlippedTile,
                 captureGroups,
-                waitingForOpponent: game.players.length < MAX_PLAYERS_PER_GAME
+                waitingForOpponent: game.players.length < MAX_PLAYERS_PER_GAME,
+                winPercentage
             });
         }
         checkIfGameOver(gameRoom);

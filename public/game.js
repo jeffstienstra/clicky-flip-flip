@@ -117,7 +117,6 @@ function handleTileClick(x, y) {
 socket.on('initializeBoard', (data) => {
     board = data.board;
     currentPlayerNumber = data.currentPlayerNumber;
-    winPercentage = data.winPercentage;
     const players = data.players;
     renderBoard();
     updateScores(players);
@@ -130,8 +129,10 @@ socket.on('updateGame', async (data) => {
     lastFlippedTile = data.lastFlippedTile;
     players = data.players;
     waitingForOpponent = data.waitingForOpponent;
+    winPercentage = data.winPercentage;
 
     updateScores(players);
+    updateWinPercentageLabel(winPercentage);
 
     // Update player color indicators
     document.getElementById('youColor').style.backgroundColor = player.playerNumber === 1 ? player1Color : player2Color;
@@ -324,6 +325,7 @@ function clearHoverEffect() {
 }
 
 function handleTileHover(x, y) {
+    console.log('handleTileHover', x, y);
     if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
         currentHoverX = x;
         currentHoverY = y;
@@ -416,6 +418,11 @@ function updateTurnIndicator() {
     } else {
         turnIndicator.textContent = "Waiting for opponent's turn...";
     }
+}
+
+function updateWinPercentageLabel(winPercentage) {
+    const label = document.getElementById('winPercentageLabel');
+    label.textContent = `Goal: ${winPercentage || '-'}%`;
 }
 
 function setGameOverState(players) {
