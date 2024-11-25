@@ -54,6 +54,15 @@ let winPercentage;
 function initializeBoard(boardOrientation, boardSize) {
     BOARD_SIZE = boardSize;
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+
+    /* TODO:
+    -fix lose modal. said you lose on win
+    -calculate percentage of tiles owned by each player on initial board setup
+    -fix islands so you need to be connected to your own tiles to add new tiles
+    -change hover to red tinge when hovering over an illegal tile
+    -make each turn more competitive: smaller boards, larger cursors
+    */
+
     switch (boardOrientation) {
         case 'standard':
             if (boardSize == 8) {
