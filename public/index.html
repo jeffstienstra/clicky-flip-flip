@@ -78,15 +78,17 @@
             display: none;
         }
         .board {
+            position: relative;
             display: grid;
-            margin: 20px 0;
+            justify-content: center;
             grid-template-columns: repeat(20, 1fr);
             grid-template-rows: repeat(20, 1fr);
-            background-color: var(--board-color);
+            margin: 20px auto;
             gap: 0px;
-            position: relative;
+            background-color: var(--board-color);
             border: .25rem solid var(--board-border-color);
             border-radius: .25rem;
+            width: fit-content;
             /* width: 90vmin;
             height: 90vmin; */
         }
@@ -379,7 +381,9 @@
             <div class="board-size-container">
                 <label for="boardSize">Board Size:</label>
                 <select id="boardSize">
+                    <option value="4">Tiny (4x4)</option>
                     <option value="8">Small (8x8)</option>
+                    <option value="12">Medium (12x12)</option>
                     <option value="20">Large (20x20)</option>
                 </select>
             </div>
@@ -491,15 +495,27 @@
 
         document.getElementById('boardOrientation').addEventListener('change', (event) => {
             const boardSizeSelect = document.getElementById('boardSize');
+            const tinyOption = boardSizeSelect.querySelector('option[value="4"]');
+
+            if (event.target.value === 'checkerboard') {
+                if (tinyOption) {
+                    tinyOption.remove();
+                }
+            } else {
+                if (!tinyOption) {
+                    const newOption = document.createElement('option');
+                    newOption.value = '4';
+                    newOption.textContent = 'Tiny (4x4)';
+                    boardSizeSelect.insertBefore(newOption, boardSizeSelect.firstChild);
+                }
+            }
+
             if (event.target.value === 'islands') {
                 boardSizeSelect.value = '20';
                 boardSizeSelect.disabled = true;
             } else {
                 boardSizeSelect.disabled = false;
             }
-            // Update --board-size CSS variable
-            document.documentElement.style.setProperty('--board-size', boardSizeSelect.value);
-
         });
 
         // Function to set the CSS variable

@@ -33,6 +33,9 @@ const CURSOR_SHAPES = {
     singleTile: [
         {dx: 0, dy: 0}
     ],
+    doubleTile: [
+        {dx: 0, dy: 0}, {dx: 0, dy: -1}
+    ],
     plus: [
         {dx: 0, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}
     ],
@@ -50,19 +53,18 @@ const CURSOR_SHAPES = {
     ],
     line: [
         [{dx: -2, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 0}, {dx: 1, dy: 0}, {dx: 2, dy: 0}], // horizontal
-        [{dx: 2, dy: -2}, {dx: 1, dy: -1}, {dx: 0, dy: 0}, {dx: -1, dy: 1}, {dx: -2, dy: 2}], // diagonal
+        // [{dx: 2, dy: -2}, {dx: 1, dy: -1}, {dx: 0, dy: 0}, {dx: -1, dy: 1}, {dx: -2, dy: 2}], // diagonal
         [{dx: 0, dy: -2}, {dx: 0, dy: -1}, {dx: 0, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: 2}], // vertical
-        [{dx: -2, dy: -2}, {dx: -1, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: 1}, {dx: 2, dy: 2}] // diagonal
+        // [{dx: -2, dy: -2}, {dx: -1, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: 1}, {dx: 2, dy: 2}] // diagonal
     ]
 };
 let currentShapeKey = 'plus';
 let currentCursorShapeIndex = 0;
 
-
 /* ================================== */
 // Socket emitters
 /* ================================== */
-
+//#region
 joinButton.addEventListener('click', () => {
     const playerName = playerNameInput.value.trim() || '';
     const boardOrientation = boardOrientationSelect.value;
@@ -109,17 +111,19 @@ function handleTileClick(x, y) {
     }
 }
 
+//#endregion
 
 /* ================================== */
 // Socket listeners
 /* ================================== */
-
+//#region
 socket.on('initializeBoard', (data) => {
     board = data.board;
     currentPlayerNumber = data.currentPlayerNumber;
     const players = data.players;
     renderBoard();
     updateScores(players);
+    updateWinPercentageLabel(data.winPercentage);
 });
 
 socket.on('updateGame', async (data) => {
@@ -228,11 +232,12 @@ function addTileHoverListeners(tileElement, x, y) {
     tileElement.addEventListener('mouseleave', () => handleTileHoverOut(x, y));
 }
 
+//#endregion
 
 /* ================================== */
 // Helper functions
 /* ================================== */
-
+//#region
 function renderBoard() {
     const boardElement = document.getElementById('board');
     boardElement.innerHTML = ''; // Clear existing board
@@ -460,7 +465,6 @@ function updateScores(players) {
 
         updateProgressBar(players);
 
-        // Assuming renderBoard and other animations are handled here
         // Wait for animations to complete before resolving the Promise
         setTimeout(() => {
             resolve();
@@ -472,14 +476,15 @@ function updateProgressBar(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
 
-    if (you && opponent) {
+    if (you) {
         const player1Percentage = you.playerNumber === 1 ? you.score : opponent.score;
-        const player2Percentage = you.playerNumber === 2 ? you.score : opponent.score;
-
         const player1Progress = (player1Percentage / winPercentage) * 50; // 50% is the center
-        const player2Progress = (player2Percentage / winPercentage) * 50; // 50% is the center
-
         document.getElementById('player1Progress').style.width = `${player1Progress}%`;
+    }
+
+    if (opponent) {
+        const player2Percentage = you.playerNumber === 2 ? you.score : opponent.score;
+        const player2Progress = (player2Percentage / winPercentage) * 50; // 50% is the center
         document.getElementById('player2Progress').style.width = `${player2Progress}%`;
     }
 }
@@ -504,3 +509,5 @@ function applyTheme(players) {
 
     renderBoard();
 }
+
+//#endregion

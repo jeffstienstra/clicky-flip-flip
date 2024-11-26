@@ -65,9 +65,17 @@ function initializeBoard(boardOrientation, boardSize) {
 
     switch (boardOrientation) {
         case 'standard':
-            if (boardSize == 8) {
+            if (boardSize == 4) {
+                // 4x4 - Neutral tiles
+                winPercentage = 50;
+                for (let x = 0; x < boardSize; x++) {
+                    for (let y = 0; y < boardSize; y++) {
+                        board[x][y] = 0; // neutral tile
+                    }
+                }
+            } else if (boardSize == 8) {
                 // 8x8 - Neutral tiles
-                winPercentage = 50; // TODO set back to 50
+                winPercentage = 50;
                 for (let x = 0; x < boardSize; x++) {
                     for (let y = 0; y < boardSize; y++) {
                         board[x][y] = 0; // neutral tile
@@ -84,9 +92,23 @@ function initializeBoard(boardOrientation, boardSize) {
             }
             break;
         case 'checkerboard':
+            // 4x4 board with 2x2 checkerboard groups
+            if (boardSize == 4) {
+                winPercentage = 98;
+                for (let i = 0; i < boardSize; i += 2) {
+                    for (let j = 0; j < boardSize; j += 2) {
+                        const playerOwner = (i / 2 + j / 2) % 2 === 0 ? 1 : 2;
+                        for (let x = i; x < i + 2; x++) {
+                            for (let y = j; y < j + 2; y++) {
+                                board[x][y] = playerOwner;
+                            }
+                        }
+                    }
+                }
+            }
             // 8x8 board with 2x2 checkerboard groups
-            winPercentage = 75;
             if (boardSize == 8) {
+                winPercentage = 75;
                 for (let i = 0; i < boardSize; i += 2) {
                     for (let j = 0; j < boardSize; j += 2) {
                         const playerOwner = (i / 2 + j / 2) % 2 === 0 ? 1 : 2;
@@ -262,8 +284,12 @@ function calculatePlayerScorePercentage(player, gameRoom) {
     // Calculate the percentage of tiles owned by each player and round to the nearest whole number
     const player1Percentage = Math.round((player1Tiles / totalTiles) * 100);
     const player2Percentage = Math.round((player2Tiles / totalTiles) * 100);
-    games[gameRoom].players[0].score = player1Percentage;
-    games[gameRoom].players[1].score = player2Percentage;
+    if (games[gameRoom].players[0]) {
+        games[gameRoom].players[0].score = player1Percentage;
+    }
+    if (games[gameRoom].players[1]) {
+        games[gameRoom].players[1].score = player2Percentage;
+    }
 }
 
 function checkIfGameOver(gameRoom) {
@@ -321,6 +347,7 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const {name, boardOrientation, boardSize} = data;
         const {gameRoom, player} = addPlayerToGame(socket, name);
+
         if (games[gameRoom].players.length === 1) {
             games[gameRoom].boardOrientation = boardOrientation;
             games[gameRoom].board = initializeBoard(boardOrientation, parseInt(boardSize));
@@ -340,6 +367,8 @@ io.on('connection', (socket) => {
             waitingForOpponent: games[gameRoom].players.length < MAX_PLAYERS_PER_GAME,
             winPercentage
         });
+
+        calculatePlayerScorePercentage(player, gameRoom);
 
         if (games[gameRoom].players.length === MAX_PLAYERS_PER_GAME) {
             io.to(gameRoom).emit('initializeBoard', {
