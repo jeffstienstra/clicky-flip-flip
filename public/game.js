@@ -81,7 +81,7 @@ joinButton.addEventListener('click', () => {
 // });
 
 function handleTileClick(x, y) {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
         // Prevent flipping the last flipped tile
         if (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y) {
             return;
@@ -204,7 +204,7 @@ socket.on('gameOver', async (data) => {
 });
 
 document.addEventListener('wheel', (event) => {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
         if (currentHoverX !== null && currentHoverY !== null) {
             clearHoverEffect(currentHoverX, currentHoverY);
 
@@ -290,7 +290,7 @@ function renderBoard() {
 }
 
 function rotateCursorShape() {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
         if (currentShapeKey === 'line') {
             currentCursorShapeIndex = (currentCursorShapeIndex + 1) % CURSOR_SHAPES.line.length;
         } else {
@@ -331,7 +331,7 @@ function clearHoverEffect() {
 
 function handleTileHover(x, y) {
     console.log('handleTileHover', x, y);
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
         currentHoverX = x;
         currentHoverY = y;
 
@@ -381,7 +381,7 @@ function handleTileHover(x, y) {
 }
 
 function handleTileHoverOut(x, y) {
-    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
         clearHoverEffect();
         currentHoverX = null;
         currentHoverY = null;

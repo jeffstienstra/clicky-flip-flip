@@ -56,37 +56,35 @@ function initializeBoard(boardOrientation, boardSize) {
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
 
     /* TODO:
-    -fix lose modal. said you lose on win
-    -calculate percentage of tiles owned by each player on initial board setup
+    -fix lose modal. said "you lose" on win
+    -limit cursor to select options for different board sizes/orientations
+        -create a cursorConfig object that has the cursor size and the board size
     -fix islands so you need to be connected to your own tiles to add new tiles
     -change hover to red tinge when hovering over an illegal tile
-    -make each turn more competitive: smaller boards, larger cursors
+    -make each turn more competitive: smaller boards? larger cursors?
     */
 
     switch (boardOrientation) {
-        case 'standard':
+        case 'standard': // Board with neutral tiles
             if (boardSize == 4) {
-                // 4x4 - Neutral tiles
                 winPercentage = 50;
                 for (let x = 0; x < boardSize; x++) {
                     for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0; // neutral tile
+                        board[x][y] = 0;
                     }
                 }
             } else if (boardSize == 8) {
-                // 8x8 - Neutral tiles
                 winPercentage = 50;
                 for (let x = 0; x < boardSize; x++) {
                     for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0; // neutral tile
+                        board[x][y] = 0;
                     }
                 }
             } else if (boardSize == 20) {
-                // 20x20 - Neutral tiles
                 winPercentage = 50;
                 for (let x = 0; x < boardSize; x++) {
                     for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0; // neutral tile
+                        board[x][y] = 0;
                     }
                 }
             }
