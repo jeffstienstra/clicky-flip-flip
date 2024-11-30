@@ -406,6 +406,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('tileHover', (data) => {
+        const gameRoom = getPlayerRoom(socket.id);
+        const playerId = socket.id;
+        io.to(gameRoom).emit('tileHover', {...data, playerId});
+    });
+
+    socket.on('tileHoverOut', () => {
+        const gameRoom = getPlayerRoom(socket.id);
+        const playerId = socket.id;
+        io.to(gameRoom).emit('tileHoverOut', {playerId});
+    });
+
     socket.on('move', async (data) => {
         const {player, selectedTiles, clickedTile} = data;
         const gameRoom = getPlayerRoom(player.id);

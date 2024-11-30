@@ -3,7 +3,7 @@ let board;
 let player = {};
 let winPercentage;
 let currentPlayerNumber;
-let waitingForOpponent = true;
+let waitingForOpponent = true; // only 1 player has joined the game (this is not the turn indicator)
 let lastFlippedTile = null;
 let currentHoverX = null;
 let currentHoverY = null;
@@ -28,6 +28,7 @@ const turnIndicator = document.getElementById('turnIndicator');
 const playerList = document.getElementById('playerList');
 const themeSelect = document.getElementById('themeSelect');
 const boardOrientationSelect = document.getElementById('boardOrientation');
+const waitIndicator = document.getElementById('waitIndicator');
 
 const CURSOR_SHAPES = {
     singleTile: [
@@ -58,7 +59,27 @@ const CURSOR_SHAPES = {
         // [{dx: -2, dy: -2}, {dx: -1, dy: -1}, {dx: 0, dy: 0}, {dx: 1, dy: 1}, {dx: 2, dy: 2}] // diagonal
     ]
 };
-let currentShapeKey = 'plus';
+
+const cursorConfig = { // Available cursor shapes for each board size and orientation
+    standard: {
+        4: ['singleTile', 'doubleTile'],
+        8: ['singleTile', 'doubleTile', 'plus', 'T', 'L'],
+        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    },
+    checkerboard: {
+        8: ['singleTile', 'doubleTile', 'plus', 'T', 'L'],
+        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    },
+    islands: {
+        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    },
+    topBottomSplit: {
+        8: ['singleTile', 'doubleTile', 'plus', 'T', 'L'],
+        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    }
+};
+
+let currentCursorKey = 'plus';
 let currentCursorShapeIndex = 0;
 
 /* ================================== */
@@ -73,6 +94,11 @@ joinButton.addEventListener('click', () => {
     socket.emit('join', {name: playerName, boardOrientation, boardSize});
     landingPage.style.display = 'none';
     gamePage.style.display = 'block';
+});
+
+document.addEventListener('mousemove', (event) => {
+    waitIndicator.style.left = `${event.pageX- 25}px`;
+    waitIndicator.style.top = `${event.pageY - 0}px`;
 });
 
 // themeSelect.addEventListener('change', (event) => {
@@ -95,11 +121,11 @@ function handleTileClick(x, y) {
         clearHoverEffect(x, y);
 
         const selectedTiles = [];
-        const currentShape = currentShapeKey === 'line'
+        const cursorShape = currentCursorKey === 'line'
             ? CURSOR_SHAPES.line[currentCursorShapeIndex]
-            : CURSOR_SHAPES[currentShapeKey];
+            : CURSOR_SHAPES[currentCursorKey];
 
-        currentShape.forEach(dir => {
+        cursorShape.forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
             if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
@@ -209,11 +235,11 @@ document.addEventListener('wheel', (event) => {
             clearHoverEffect(currentHoverX, currentHoverY);
 
             const shapeKeys = Object.keys(CURSOR_SHAPES);
-            const currentIndex = shapeKeys.indexOf(currentShapeKey);
+            const currentIndex = shapeKeys.indexOf(currentCursorKey);
             if (event.deltaY < 0) {
-                currentShapeKey = shapeKeys[(currentIndex + 1) % shapeKeys.length];
+                currentCursorKey = shapeKeys[(currentIndex + 1) % shapeKeys.length];
             } else {
-                currentShapeKey = shapeKeys[(currentIndex - 1 + shapeKeys.length) % shapeKeys.length];
+                currentCursorKey = shapeKeys[(currentIndex - 1 + shapeKeys.length) % shapeKeys.length];
             }
 
             handleTileHover(currentHoverX, currentHoverY);
@@ -291,14 +317,14 @@ function renderBoard() {
 
 function rotateCursorShape() {
     if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
-        if (currentShapeKey === 'line') {
+        if (currentCursorKey === 'line') {
             currentCursorShapeIndex = (currentCursorShapeIndex + 1) % CURSOR_SHAPES.line.length;
         } else {
-            const rotatedShape = CURSOR_SHAPES[currentShapeKey].map(({dx, dy}) => ({
+            const rotatedShape = CURSOR_SHAPES[currentCursorKey].map(({dx, dy}) => ({
                 dx: dy,
                 dy: -dx
             }));
-            CURSOR_SHAPES[currentShapeKey] = rotatedShape;
+            CURSOR_SHAPES[currentCursorKey] = rotatedShape;
         }
 
         if (currentHoverX !== null && currentHoverY !== null) {
@@ -309,7 +335,7 @@ function rotateCursorShape() {
 }
 
 function switchShape(newShapeKey) {
-    currentShapeKey = newShapeKey;
+    currentCursorKey = newShapeKey;
     currentCursorShapeIndex = 0;
     if (currentHoverX !== null && currentHoverY !== null) {
         clearHoverEffect();
@@ -320,18 +346,38 @@ function switchShape(newShapeKey) {
 function clearHoverEffect() {
     const hoverClass1 = 'tile-selector-player1';
     const hoverClass2 = 'tile-selector-player2';
+    const hoverClassOpponent = 'tile-selector-opponent';
+    const invalidOpponentClass = 'tile-selector-opponent-invalid';
     const invalidClass = 'tile-selector-invalid';
 
-    document.querySelectorAll(`.${hoverClass1}, .${hoverClass2}, .${invalidClass}`).forEach(tile => {
+    document.querySelectorAll(`
+        .${hoverClass1},
+        .${hoverClass2},
+        .${hoverClassOpponent},
+        .${invalidOpponentClass},
+        .${invalidClass}`).forEach(tile => {
         tile.classList.remove(hoverClass1);
         tile.classList.remove(hoverClass2);
+        tile.classList.remove(hoverClassOpponent);
+        tile.classList.remove(invalidOpponentClass);
         tile.classList.remove(invalidClass);
     });
 }
 
+const throttledEmitTileHover = throttle((x, y, cursorShape) => {
+    socket.emit('tileHover', {x, y, cursorShape});
+}, 250);
+
+const throttledEmitTileHoverOut = throttle((x, y) => {
+    socket.emit('tileHoverOut');
+})
+
 function handleTileHover(x, y) {
-    console.log('handleTileHover', x, y);
-    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+
+        const cursorShape = getCursorShape();
+        throttledEmitTileHover(x, y, cursorShape);
+
         currentHoverX = x;
         currentHoverY = y;
 
@@ -339,53 +385,102 @@ function handleTileHover(x, y) {
 
         const hoverClass = player.playerNumber === 1 ? 'tile-selector-player1' : 'tile-selector-player2';
         const invalidClass = 'tile-selector-invalid';
-        let isInvalidMove = false;
 
-        // Check if the center tile is invalid
-        if (board[x][y] === player.playerNumber || (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y)) {
-            isInvalidMove = true;
-        }
-
-        const currentShape = currentShapeKey === 'line'
-        ? CURSOR_SHAPES.line[currentCursorShapeIndex]
-        : CURSOR_SHAPES[currentShapeKey];
-
-        currentShape.forEach(({dx, dy}) => {
-            const newX = x + dx;
-            const newY = y + dy;
-            if (isValidTile(newX, newY)) {
-                const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
-                if (tileElement) {
-                    if (isInvalidMove || board[newX][newY] === player.playerNumber) {
-                        tileElement.classList.add(invalidClass);
-                    } else {
-                        tileElement.classList.add(hoverClass);
-                    }
-                }
-            }
-        });
+        const isInvalidMove = checkInvalidMove(x, y);
 
         if (isInvalidMove) {
-            currentShape.forEach(({dx, dy}) => {
-                const newX = x + dx;
-                const newY = y + dy;
-                if (isValidTile(newX, newY)) {
-                    const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
-                    if (tileElement) {
-                        tileElement.classList.add(invalidClass);
-                    }
-                }
-            });
+            applyInvalidHoverEffect(x, y, cursorShape, invalidClass);
+        } else {
+            applyHoverEffect(x, y, cursorShape, hoverClass, invalidClass);
         }
+    } else {
+        waitIndicator.style.display = 'block'; // Show the 'wait' indicator
     }
 }
 
-function handleTileHoverOut(x, y) {
-    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
-        clearHoverEffect();
-        currentHoverX = null;
-        currentHoverY = null;
+function handleOpponentTileHover(x, y, opponentCursorShape) {
+    const cursorShape = getCursorShape(opponentCursorShape);
+
+    clearHoverEffect();
+
+    const hoverClass = 'tile-selector-opponent';
+    const invalidClass = 'tile-selector-opponent-invalid';
+
+    applyHoverEffect(x, y, cursorShape, hoverClass, invalidClass);
+}
+
+socket.on('tileHover', (data) => {
+    const {x, y, cursorShape, playerId} = data;
+    if (playerId !== socket.id) {
+        handleOpponentTileHover(x, y, cursorShape);
     }
+});
+
+socket.on('tileHoverOut', (data) => {
+    const {playerId} = data;
+    if (playerId !== socket.id) {
+        clearHoverEffect();
+    }
+});
+
+function getCursorShape(opponentCursorShape) {
+    if (opponentCursorShape) {
+        return opponentCursorShape;
+    } else {
+        return currentCursorKey === 'line'
+            ? CURSOR_SHAPES.line[currentCursorShapeIndex]
+            : CURSOR_SHAPES[currentCursorKey];
+    }
+}
+
+function applyHoverEffect(x, y, cursorShape, hoverClass, invalidClass) {
+    cursorShape.forEach(({dx, dy}) => {
+        const newX = x + dx;
+        const newY = y + dy;
+        if (isValidTile(newX, newY)) {
+            const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+            if (tileElement) {
+                tileElement.classList.add(hoverClass);
+            }
+        }
+    });
+}
+
+function applyInvalidHoverEffect(x, y, cursorShape, invalidClass) {
+    cursorShape.forEach(({dx, dy}) => {
+        const newX = x + dx;
+        const newY = y + dy;
+        if (isValidTile(newX, newY)) {
+            const tileElement = document.querySelector(`.tile[data-x='${newX}'][data-y='${newY}']`);
+            if (tileElement) {
+                tileElement.classList.add(invalidClass);
+            }
+        }
+    });
+}
+
+function checkInvalidMove(x, y) {
+    return board[x][y] === player.playerNumber || (lastFlippedTile && lastFlippedTile.x === x && lastFlippedTile.y === y);
+}
+
+socket.on('opponentTileHover', (data) => {
+    const {x, y, cursorShape, opponentId} = data;
+
+    if (opponentId !== socket.id) {return}
+
+    clearHoverEffect();
+
+    handleTileHover(x, y, cursorShape);
+
+})
+
+function handleTileHoverOut(x, y) {
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
+        throttledEmitTileHoverOut(x, y);
+
+        clearHoverEffect();
+    }
+    waitIndicator.style.display = 'none';
 }
 
 function isValidTile(x, y) {
@@ -434,7 +529,7 @@ function setGameOverState(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
 
-    const gameOverMessage = `${you.score > winPercentage ? `${you.name || 'You'} win!` : 'You lose.'} ${you.score}% to ${opponent.score}%`;
+    const gameOverMessage = `${you.score >= winPercentage ? `${you.name || 'You'} win!` : 'You lose.'} ${you.score}% to ${opponent.score}%`;
 
     // Show the custom modal dialog
     const modal = document.getElementById('gameOverModal');
@@ -508,6 +603,26 @@ function applyTheme(players) {
     document.getElementById('opponentColor').style.backgroundColor = player.playerNumber === 1 ? selectedTheme.player2Color : selectedTheme.player1Color;
 
     renderBoard();
+}
+
+function throttle(func, limit) {
+    let lastFunc;
+    let lastRan;
+    return function(...args) {
+        const context = this;
+        if (!lastRan) {
+            func.apply(context, args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(function() {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    };
 }
 
 //#endregion
