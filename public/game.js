@@ -97,11 +97,11 @@ joinButton.addEventListener('click', () => {
 });
 
 document.addEventListener('mousemove', (event) => {
-    if(waitingForOpponent) {
+    if(player.playerNumber === currentPlayerNumber) {
+        waitIndicator.style.display = 'none';
+    } else {
         waitIndicator.style.left = `${event.pageX- 25}px`;
         waitIndicator.style.top = `${event.pageY - 0}px`;
-    } else {
-        waitIndicator.style.display = 'none';
     }
 });
 
