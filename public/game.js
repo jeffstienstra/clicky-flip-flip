@@ -97,8 +97,12 @@ joinButton.addEventListener('click', () => {
 });
 
 document.addEventListener('mousemove', (event) => {
-    waitIndicator.style.left = `${event.pageX- 25}px`;
-    waitIndicator.style.top = `${event.pageY - 0}px`;
+    if(waitingForOpponent) {
+        waitIndicator.style.left = `${event.pageX- 25}px`;
+        waitIndicator.style.top = `${event.pageY - 0}px`;
+    } else {
+        waitIndicator.style.display = 'none';
+    }
 });
 
 // themeSelect.addEventListener('change', (event) => {
@@ -480,7 +484,6 @@ function handleTileHoverOut(x, y) {
 
         clearHoverEffect();
     }
-    waitIndicator.style.display = 'none';
 }
 
 function isValidTile(x, y) {
