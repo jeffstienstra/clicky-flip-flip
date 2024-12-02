@@ -368,11 +368,11 @@ function clearHoverEffect() {
     });
 }
 
-const throttledEmitTileHover = throttle((x, y, cursorShape) => {
+const emitTileHoverThrottled = throttle((x, y, cursorShape) => {
     socket.emit('tileHover', {x, y, cursorShape});
-}, 250);
+}, 150);
 
-const throttledEmitTileHoverOut = throttle((x, y) => {
+const emitTileHoverOutThrottled = throttle((x, y) => {
     socket.emit('tileHoverOut');
 })
 
@@ -380,7 +380,7 @@ function handleTileHover(x, y) {
     if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
 
         const cursorShape = getCursorShape();
-        throttledEmitTileHover(x, y, cursorShape);
+        emitTileHoverThrottled(x, y, cursorShape);
 
         currentHoverX = x;
         currentHoverY = y;
@@ -480,7 +480,7 @@ socket.on('opponentTileHover', (data) => {
 
 function handleTileHoverOut(x, y) {
     if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
-        throttledEmitTileHoverOut(x, y);
+        emitTileHoverOutThrottled(x, y);
 
         clearHoverEffect();
     }
@@ -529,8 +529,7 @@ function updateWinPercentageLabel(winPercentage) {
 }
 
 function setGameOverState(players) {
-    const you = Object.values(players).find(p => p.id === socket.id);
-    const opponent = Object.values(players).find(p => p.id !== socket.id);
+    const {you, opponent} = getPlayerObjects(players);
 
     const gameOverMessage = `${you.score >= winPercentage ? `${you.name || 'You'} win!` : 'You lose.'} ${you.score}% to ${opponent.score}%`;
 
@@ -550,8 +549,7 @@ function setGameOverState(players) {
 
 function updateScores(players) {
     return new Promise((resolve) => {
-        const you = Object.values(players).find(p => p.id === socket.id);
-        const opponent = Object.values(players).find(p => p.id !== socket.id);
+        const {you, opponent} = getPlayerObjects(players);
 
         if (you) {
             document.getElementById('youScore').textContent = `${player.name || 'You'}: ${you.score || 0}%`;
@@ -566,13 +564,19 @@ function updateScores(players) {
         // Wait for animations to complete before resolving the Promise
         setTimeout(() => {
             resolve();
-        }, 500); // the FLIP_DURATION. Use the duration of the longest animation
+        }, 1000); // the FLIP_DURATION. Use the duration of the longest animation
     });
 }
 
-function updateProgressBar(players) {
+function getPlayerObjects(players) {
     const you = Object.values(players).find(p => p.id === socket.id);
     const opponent = Object.values(players).find(p => p.id !== socket.id);
+
+    return {you, opponent};
+}
+
+function updateProgressBar(players) {
+    const {you, opponent} = getPlayerObjects(players);
 
     if (you) {
         const player1Percentage = you.playerNumber === 1 ? you.score : opponent.score;

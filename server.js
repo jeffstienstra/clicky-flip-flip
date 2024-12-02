@@ -80,6 +80,13 @@ function initializeBoard(boardOrientation, boardSize) {
                         board[x][y] = 0;
                     }
                 }
+            } else if (boardSize == 12) {
+                winPercentage = 50;
+                for (let x = 0; x < boardSize; x++) {
+                    for (let y = 0; y < boardSize; y++) {
+                        board[x][y] = 0;
+                    }
+                }
             } else if (boardSize == 20) {
                 winPercentage = 50;
                 for (let x = 0; x < boardSize; x++) {
@@ -155,6 +162,7 @@ function initializeBoard(boardOrientation, boardSize) {
                     }
                 }
             }
+        default: 'standard';
         break;
     }
     board.totalTiles = BOARD_SIZE * BOARD_SIZE;
@@ -266,7 +274,7 @@ function calculatePlayerScoreIncrementing(flippedTiles, player, gameRoom) {
     }
 }
 
-function calculatePlayerScorePercentage(player, gameRoom) {
+function calculatePlayerScorePercentage(gameRoom) {
     const totalTiles = games[gameRoom].board.totalTiles;
     let player1Tiles = 0;
     let player2Tiles = 0;
@@ -366,7 +374,7 @@ io.on('connection', (socket) => {
             winPercentage
         });
 
-        calculatePlayerScorePercentage(player, gameRoom);
+        calculatePlayerScorePercentage(gameRoom);
 
         if (games[gameRoom].players.length === MAX_PLAYERS_PER_GAME) {
             io.to(gameRoom).emit('initializeBoard', {
@@ -423,7 +431,7 @@ io.on('connection', (socket) => {
         const gameRoom = getPlayerRoom(player.id);
         const game = games[gameRoom];
 
-        if (player.playerNumber === game.currentPlayerNumber) {
+        if (player?.playerNumber === game?.currentPlayerNumber) {
             const captureGroups = [];
 
             selectedTiles.forEach(({x, y}) => {
@@ -449,7 +457,7 @@ io.on('connection', (socket) => {
             }
 
             // calculatePlayerScoreIncrementing([...(captureGroups.flat() || [])], player, gameRoom);
-            calculatePlayerScorePercentage(player, gameRoom);
+            calculatePlayerScorePercentage(gameRoom);
             game.lastFlippedTile = clickedTile;
 
             game.currentPlayerNumber = togglePlayerTurn(game);
