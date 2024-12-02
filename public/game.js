@@ -398,7 +398,7 @@ function handleTileHover(x, y) {
             applyHoverEffect(x, y, cursorShape, hoverClass, invalidClass);
         }
     } else {
-        waitIndicator.style.display = 'block'; // Show the 'wait' indicator
+        waitIndicator.style.display = 'block';
     }
 }
 

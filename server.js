@@ -97,8 +97,7 @@ function initializeBoard(boardOrientation, boardSize) {
             }
             break;
         case 'checkerboard':
-            // 4x4 board with 2x2 checkerboard groups
-            if (boardSize == 4) {
+            if (boardSize == 4) { // 4x4 board with 2x2 checkerboard groups
                 winPercentage = 98;
                 for (let i = 0; i < boardSize; i += 2) {
                     for (let j = 0; j < boardSize; j += 2) {
@@ -111,14 +110,26 @@ function initializeBoard(boardOrientation, boardSize) {
                     }
                 }
             }
-            // 8x8 board with 2x2 checkerboard groups
-            if (boardSize == 8) {
+            if (boardSize == 8) { // 8x8 board with 2x2 checkerboard groups
                 winPercentage = 75;
                 for (let i = 0; i < boardSize; i += 2) {
                     for (let j = 0; j < boardSize; j += 2) {
                         const playerOwner = (i / 2 + j / 2) % 2 === 0 ? 1 : 2;
                         for (let x = i; x < i + 2; x++) {
                             for (let y = j; y < j + 2; y++) {
+                                board[x][y] = playerOwner;
+                            }
+                        }
+                    }
+                }
+            }
+            if (boardSize == 12) { // 12x12 board with 3x3 checkerboard groups
+                winPercentage = 75;
+                for (let i = 0; i < boardSize; i += 3) {
+                    for (let j = 0; j < boardSize; j += 3) {
+                        const playerOwner = (i / 3 + j / 3) % 2 === 0 ? 1 : 2;
+                        for (let x = i; x < i + 3; x++) {
+                            for (let y = j; y < j + 3; y++) {
                                 board[x][y] = playerOwner;
                             }
                         }
