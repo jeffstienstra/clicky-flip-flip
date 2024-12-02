@@ -105,10 +105,10 @@ document.addEventListener('mousemove', (event) => {
     }
 });
 
-// themeSelect.addEventListener('change', (event) => {
-//     const selectedTheme = event.target.value;
-//     socket.emit('requestThemeChange', { playerNumber: player.playerNumber, theme: selectedTheme });
-// });
+themeSelect.addEventListener('change', (event) => {
+    const selectedTheme = event.target.value;
+    socket.emit('requestThemeChange', { playerNumber: player.playerNumber, theme: selectedTheme });
+});
 
 function handleTileClick(x, y) {
     if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
@@ -203,16 +203,16 @@ socket.on('playerDisconnected', (data) => {
     updateTurnIndicator();
 });
 
-// socket.on('receiveThemesAndEnums', (data) => {
-//     themes = data.THEMES;
-//     playerNumberEnum = data.PLAYER_NUMBER_ENUM;
-//     Object.keys(themes).forEach(theme => {
-//         const option = document.createElement('option');
-//         option.value = theme;
-//         option.textContent = theme;
-//         themeSelect.appendChild(option);
-//     });
-// });
+socket.on('receiveThemesAndEnums', (data) => {
+    themes = data.THEMES;
+    playerNumberEnum = data.PLAYER_NUMBER_ENUM;
+    Object.keys(themes).forEach(theme => {
+        const option = document.createElement('option');
+        option.value = theme;
+        option.textContent = theme;
+        themeSelect.appendChild(option);
+    });
+});
 
 socket.on('themeChange', (data) => {
     const { playerNumber, players } = data;

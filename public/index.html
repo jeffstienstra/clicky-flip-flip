@@ -17,9 +17,6 @@
             --board-color: #27301c;
             --board-border-color: #9fb060;
             --tile-border-color: #ced7ab;
-            /* add these if needed to better optimize contrast with each theme */
-            /* --tile-border-hover-player1: #ced7ab;
-            --tile-border-hover-player2: #ced7ab; */
             --territory-border-color: #27301c;
             --text-color: #9fb060;
             --board-width: 0;
@@ -333,6 +330,9 @@
             width: 50%;
             max-width: 400px;
         }
+        .game-over-message {
+            color: #000000;
+        }
         #gameOverButton {
             display: block;
             margin: 0 auto;
@@ -394,7 +394,7 @@
     </div>
     <div id="game" class="container">
         <h1>Clicky Flip Flip</h1>
-        <!-- <select id="themeSelect"></select> -->
+        <select id="themeSelect"></select>
 
         <div id="scoreboard" class="players-container">
             <div id="youContainer">
@@ -448,7 +448,7 @@
 
         <div id="gameOverModal" class="modal">
             <div class="modal-content">
-                <p id="gameOverMessage"></p>
+                <p id="gameOverMessage" class="game-over-message"></p>
                 <button id="gameOverButton">OK</button>
             </div>
         </div>
