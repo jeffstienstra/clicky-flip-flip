@@ -20,6 +20,7 @@
             --territory-border-color: #27301c;
             --text-color: #9fb060;
             --board-width: 0;
+            --flipDuration: 500ms;
         }
         p {
             margin: 0;
@@ -120,7 +121,7 @@
             border: 3px solid rgba(206, 50, 50, 1);
         }
         .flipped {
-            animation: flip 500ms ease-in-out;
+            animation: flip var(--flipDuration) ease-in-out;
         }
         @keyframes flip {
             0% {
