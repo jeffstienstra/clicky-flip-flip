@@ -25,17 +25,38 @@ const DIAGONAL_DIRECTIONS = [
     {dx: 1, dy: 1}    // Bottom-right
 ];
 const ALL_DIRECTIONS = CARDINAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
+const cursorConfig = {
+    standard: {
+        4: ['doubleTile'],
+        8: ['doubleTile', 'plus', 'T', 'L'],
+        12: ['plus', 'T', 'L'],
+        20: ['plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    },
+    checkerboard: {
+        4: ['singleTile'],
+        8: ['doubleTile', 'plus', 'T', 'L'],
+        12: ['plus', 'T', 'L'],
+        20: ['plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    },
+    islands: {
+        20: ['plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    },
+    topBottomSplit: {
+        4: ['singleTile'],
+        8: ['plus', 'T', 'L'],
+        12: ['plus', 'T', 'L'],
+        20: ['plus', 'T', 'L', 'LPlus', 'checker', 'line']
+    }
+};
 const islandShapes = [
-    // main island
-    [
+    [ // main island
         {dx: -2, dy: -2}, {dx: -1, dy: -2}, {dx: 0, dy: -2},
         {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
         {dx: -1, dy: 0}, {dx: 0, dy: 0}, {dx: 1, dy: 0},
         {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1},
         {dx: 0, dy: 2}, {dx: 1, dy: 2}, {dx: 2, dy: 2},
     ],
-    // small island
-    [
+    [ // small island
         {dx: 0, dy: -1}, {dx: 1, dy: -1},
         {dx: -1, dy: 0}, {dx: 0, dy: 0}, {dx: 1, dy: 0},
         {dx: -1, dy: 1}, {dx: 0, dy: 1},
@@ -51,109 +72,75 @@ let board;
 let boardOrientation;
 let winPercentage;
 
-function initializeBoard(boardOrientation, boardSize) {
+function buildStandardBoard(board, size) {
+    for (let x = 0; x < size; x++) {
+        for (let y = 0; y < size; y++) {
+            board[x][y] = 0;
+        }
+    }
+    return board;
+}
+
+function buildCheckerboardBoard(board, size, checkerSize) {
+    for (let i = 0; i < size; i += checkerSize) {
+        for (let j = 0; j < size; j += checkerSize) {
+            const playerOwner = (i / checkerSize + j / checkerSize) % 2 === 0 ? 1 : 2;
+            for (let x = i; x < i + checkerSize; x++) {
+                for (let y = j; y < j + checkerSize; y++) {
+                    board[x][y] = playerOwner;
+                }
+            }
+        }
+    }
+    return board;
+}
+
+function initializeBoard(boardOrientation = 'standard', boardSize = 8) {
+    if (!boardOrientation || !boardSize) {
+        return;
+    }
     BOARD_SIZE = boardSize;
+    availableCursors = cursorConfig[boardOrientation][boardSize];
+
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
 
     /* TODO:
-    -fix lose modal. said "you lose" on win
-    -limit cursor to select options for different board sizes/orientations
-        -create a cursorConfig object that has the cursor size and the board size
     -fix islands so you need to be connected to your own tiles to add new tiles
     -change hover to red tinge when hovering over an illegal tile
     -make each turn more competitive: smaller boards? larger cursors?
     */
 
     switch (boardOrientation) {
-        case 'standard': // Board with neutral tiles
-            if (boardSize == 4) {
+        case 'standard': // Board of neutral tiles
+            buildStandardBoard(board, boardSize);
+            if (boardSize === 4) {
                 winPercentage = 50;
-                for (let x = 0; x < boardSize; x++) {
-                    for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0;
-                    }
-                }
-            } else if (boardSize == 8) {
-                winPercentage = 50;
-                for (let x = 0; x < boardSize; x++) {
-                    for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0;
-                    }
-                }
-            } else if (boardSize == 12) {
-                winPercentage = 50;
-                for (let x = 0; x < boardSize; x++) {
-                    for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0;
-                    }
-                }
-            } else if (boardSize == 20) {
-                winPercentage = 50;
-                for (let x = 0; x < boardSize; x++) {
-                    for (let y = 0; y < boardSize; y++) {
-                        board[x][y] = 0;
-                    }
-                }
+            } else if (boardSize === 8) {
+                winPercentage = 35;
+            } else if (boardSize === 12) {
+                winPercentage = 25;
+            } else if (boardSize === 20) {
+                winPercentage = 10;
             }
             break;
         case 'checkerboard':
-            if (boardSize == 4) { // 4x4 board with 2x2 checkerboard groups
-                winPercentage = 98;
-                for (let i = 0; i < boardSize; i += 2) {
-                    for (let j = 0; j < boardSize; j += 2) {
-                        const playerOwner = (i / 2 + j / 2) % 2 === 0 ? 1 : 2;
-                        for (let x = i; x < i + 2; x++) {
-                            for (let y = j; y < j + 2; y++) {
-                                board[x][y] = playerOwner;
-                            }
-                        }
-                    }
-                }
+            let checkerSize = 2;
+            if (boardSize === 4) { // 4x4 board, 2x2 checkerSize
+                winPercentage = 83;
             }
-            if (boardSize == 8) { // 8x8 board with 2x2 checkerboard groups
+            if (boardSize === 8) { // 8x8 board, 2x2 checkerSize
                 winPercentage = 75;
-                for (let i = 0; i < boardSize; i += 2) {
-                    for (let j = 0; j < boardSize; j += 2) {
-                        const playerOwner = (i / 2 + j / 2) % 2 === 0 ? 1 : 2;
-                        for (let x = i; x < i + 2; x++) {
-                            for (let y = j; y < j + 2; y++) {
-                                board[x][y] = playerOwner;
-                            }
-                        }
-                    }
-                }
             }
-            if (boardSize == 12) { // 12x12 board with 3x3 checkerboard groups
+            if (boardSize === 12) { // 12x12 board, 3x3 checkerSize
+                checkerSize = 3;
                 winPercentage = 75;
-                for (let i = 0; i < boardSize; i += 3) {
-                    for (let j = 0; j < boardSize; j += 3) {
-                        const playerOwner = (i / 3 + j / 3) % 2 === 0 ? 1 : 2;
-                        for (let x = i; x < i + 3; x++) {
-                            for (let y = j; y < j + 3; y++) {
-                                board[x][y] = playerOwner;
-                            }
-                        }
-                    }
-                }
             }
-            else if (boardSize == 20) {
-                // 20x20 - Checkerboard with 5x5 groups
+            else if (boardSize === 20) { // 20x20 board, 5x5 checkerSize
+                checkerSize = 5;
                 winPercentage = 75;
-                for (let i = 0; i < boardSize; i += 5) {
-                    for (let j = 0; j < boardSize; j += 5) {
-                        const playerOwner = (i / 5 + j / 5) % 2 === 0 ? 1 : 2;
-                        for (let x = i; x < i + 5; x++) {
-                            for (let y = j; y < j + 5; y++) {
-                                board[x][y] = playerOwner;
-                            }
-                        }
-                    }
-                }
             }
+            buildCheckerboardBoard(board, boardSize, checkerSize);
         break;
-        case 'islands':
-            createRandomIslands();
-            break;
         case 'topBottomSplit':
             winPercentage = 75;
             for (let y = 0; y < BOARD_SIZE; y++) {
@@ -173,11 +160,16 @@ function initializeBoard(boardOrientation, boardSize) {
                     }
                 }
             }
+        break;
+        case 'islands':
+            createRandomIslands();
+        break;
         default: 'standard';
         break;
     }
     board.totalTiles = BOARD_SIZE * BOARD_SIZE;
     board.winPercentage = winPercentage;
+
     return board;
 }
 
@@ -225,7 +217,7 @@ function isCenterColumnTile(x) {
     return x === Math.floor(BOARD_SIZE / 2) - 1 || x === Math.floor(BOARD_SIZE / 2);
 }
 
-function createGame() {
+function createGame(roomPassword = null) {
     const gameRoom = `game_${Object.keys(games).length + 1}`;
     games[gameRoom] = {
         board: initializeBoard(boardOrientation),
@@ -233,16 +225,31 @@ function createGame() {
         lastFlippedTile: null,
         players: [],
         boardOrientation: boardOrientation || 'standard',
-        winPercentage
+        winPercentage,
+        roomPassword
     };
     return gameRoom;
 }
 
-function findOrCreateGameRoom() {
-    let gameRoom = Object.keys(games).find(room => games[room].players.length < MAX_PLAYERS_PER_GAME);
-    if (!gameRoom) {
-        gameRoom = createGame();
+function findOrCreateGameRoom(roomPassword) {
+    let gameRoom;
+
+    if (roomPassword) {
+        // Find a game room with the given password that is not full
+        gameRoom = Object.keys(games).find(room => games[room].roomPassword === roomPassword && games[room].players.length < MAX_PLAYERS_PER_GAME);
+        if (!gameRoom) {
+            // Create a new game room with the given password
+            gameRoom = createGame(roomPassword);
+        }
+    } else {
+        // Find a game room without a password that is not full
+        gameRoom = Object.keys(games).find(room => !games[room].roomPassword && games[room].players.length < MAX_PLAYERS_PER_GAME);
+        if (!gameRoom) {
+            // Create a new game room without a password
+            gameRoom = createGame();
+        }
     }
+
     return gameRoom;
 }
 
@@ -250,8 +257,8 @@ function getPlayerRoom(socketId) {
     return Object.keys(games).find(room => games[room].players.some(p => p.id === socketId));
 }
 
-function addPlayerToGame(socket, name) {
-    const gameRoom = findOrCreateGameRoom();
+function addPlayerToGame(socket, name, roomPassword) {
+    const gameRoom = findOrCreateGameRoom(roomPassword);
     const playerNumber = games[gameRoom].players.length + 1;
     const player = {
         id: socket.id,
@@ -277,13 +284,13 @@ function removePlayerFromGame(socketId) {
     return gameRoom;
 }
 
-function calculatePlayerScoreIncrementing(flippedTiles, player, gameRoom) {
-    const playerInGame = games[gameRoom].players.find(p => p.id === player.id);
-    // constant increase in score - 1 point per tile flipped
-    if (playerInGame) {
-        playerInGame.score += flippedTiles.length;
-    }
-}
+// function calculatePlayerScoreIncrementing(flippedTiles, player, gameRoom) {
+//     const playerInGame = games[gameRoom].players.find(p => p.id === player.id);
+//     // constant increase in score - 1 point per tile flipped
+//     if (playerInGame) {
+//         playerInGame.score += flippedTiles.length;
+//     }
+// }
 
 function calculatePlayerScorePercentage(gameRoom) {
     const totalTiles = games[gameRoom].board.totalTiles;
@@ -362,8 +369,8 @@ io.on('connection', (socket) => {
     socket.emit('receiveThemesAndEnums', {THEMES, PLAYER_NUMBER_ENUM});
 
     socket.on('join', (data) => {
-        const {name, boardOrientation, boardSize} = data;
-        const {gameRoom, player} = addPlayerToGame(socket, name);
+        const {name, roomPassword, boardOrientation, boardSize} = data;
+        const {gameRoom, player} = addPlayerToGame(socket, name, roomPassword);
 
         if (games[gameRoom].players.length === 1) {
             games[gameRoom].boardOrientation = boardOrientation;
@@ -380,7 +387,7 @@ io.on('connection', (socket) => {
             players: games[gameRoom].players,
             currentPlayerNumber: games[gameRoom].currentPlayerNumber,
             lastFlippedTile: games[gameRoom].lastFlippedTile,
-            captureGroups: [], // Initially empty
+            captureGroups: [],
             waitingForOpponent: games[gameRoom].players.length < MAX_PLAYERS_PER_GAME,
             winPercentage
         });
@@ -390,6 +397,7 @@ io.on('connection', (socket) => {
         if (games[gameRoom].players.length === MAX_PLAYERS_PER_GAME) {
             io.to(gameRoom).emit('initializeBoard', {
                 board: games[gameRoom].board,
+                availableCursors,
                 currentPlayerNumber: games[gameRoom].currentPlayerNumber,
                 players: games[gameRoom].players,
                 winPercentage: winPercentage
@@ -413,15 +421,13 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         const gameRoom = removePlayerFromGame(socket.id);
         if (gameRoom) {
-            // resetPlayerScores(gameRoom);
-            // games[gameRoom].board = initializeBoard(); // Reset the board
-            // games[gameRoom].currentPlayerNumber = 1; // Reset the turn to player 1
-            io.to(gameRoom).emit('playerDisconnected', {
-                board: games[gameRoom].board,
-                players: games[gameRoom].players,
-                currentPlayerNumber: games[gameRoom].currentPlayerNumber,
-                waitingForOpponent: true
-            });
+            const hasPassword = !!games[gameRoom].roomPassword;
+            io.to(gameRoom).emit('playerDisconnected', {hasPassword});
+                // board: games[gameRoom].board,
+                // players: games[gameRoom].players,
+                // currentPlayerNumber: games[gameRoom].currentPlayerNumber,
+                // waitingForOpponent: true
+            // });
         }
     });
 

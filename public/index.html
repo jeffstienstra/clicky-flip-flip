@@ -374,8 +374,8 @@
                 <select id="boardOrientation">
                     <option value="standard">Standard</option>
                     <option value="checkerboard">Checkerboard</option>
-                    <option value="islands">Islands</option>
                     <option value="topBottomSplit">Top vs Bottom</option>
+                    <option value="islands">Islands</option>
                 </select>
             </div>
             <div class="board-size-container">
@@ -390,6 +390,9 @@
         </div>
         <div class="name-container">
             <input id="playerName" maxlength="18" type="text" placeholder="Name"/>
+        </div>
+        <div class="password-container">
+            <input id="roomPassword" type="password" placeholder="Room Password"/>
         </div>
         <button id="joinButton">Join</button>
     </div>
@@ -464,6 +467,17 @@
         };
     </script>
     <script>
+        joinButton.addEventListener('click', () => {
+            const playerName = playerNameInput.value.trim() || '';
+            const roomPassword = document.getElementById('roomPassword').value.trim() || '';
+            const boardOrientation = boardOrientationSelect.value;
+            const boardSize = document.getElementById('boardSize').value;
+
+            socket.emit('join', {name: playerName, roomPassword, boardOrientation, boardSize});
+            landingPage.style.display = 'none';
+            gamePage.style.display = 'block';
+        });
+
         document.getElementById('instructionsToggle').addEventListener('click', () => {
             const instructions = document.querySelector('.instructions');
             const arrow = document.querySelector('.instructionsArrow');
@@ -499,9 +513,14 @@
             const tinyOption = boardSizeSelect.querySelector('option[value="4"]');
 
             if (event.target.value === 'checkerboard') {
-                if (tinyOption) {
-                    tinyOption.remove();
-                }
+                // if (tinyOption) {
+                //     tinyOption.remove();
+                //     const newOption = document.createElement('option');
+                //     newOption.value = '4';
+                //     newOption.textContent = 'Tiny (4x4)';
+                //     boardSizeSelect.insertBefore(newOption, boardSizeSelect.firstChild);
+                //     boardSizeSelect.value = '4';
+                // }
             } else {
                 if (!tinyOption) {
                     const newOption = document.createElement('option');

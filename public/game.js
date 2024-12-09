@@ -10,6 +10,7 @@ let currentHoverY = null;
 let flipDuration = 500; // Duration of the flip animation in milliseconds
 let playerNumberEnum = {};
 let themes = {};
+let availableCursors = [];
 
 // Fetch CSS variables
 const rootStyles = getComputedStyle(document.documentElement);
@@ -60,24 +61,7 @@ const CURSOR_SHAPES = {
     ]
 };
 
-const cursorConfig = { // Available cursor shapes for each board size and orientation
-    standard: {
-        4: ['singleTile', 'doubleTile'],
-        8: ['singleTile', 'doubleTile', 'plus', 'T', 'L'],
-        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
-    },
-    checkerboard: {
-        8: ['singleTile', 'doubleTile', 'plus', 'T', 'L'],
-        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
-    },
-    islands: {
-        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
-    },
-    topBottomSplit: {
-        8: ['singleTile', 'doubleTile', 'plus', 'T', 'L'],
-        20: ['singleTile', 'doubleTile', 'plus', 'T', 'L', 'LPlus', 'checker', 'line']
-    }
-};
+
 
 let currentCursorKey = 'plus';
 let currentCursorShapeIndex = 0;
@@ -86,16 +70,6 @@ let currentCursorShapeIndex = 0;
 // Socket emitters
 /* ================================== */
 //#region
-joinButton.addEventListener('click', () => {
-    const playerName = playerNameInput.value.trim() || '';
-    const boardOrientation = boardOrientationSelect.value;
-    const boardSize = document.getElementById('boardSize').value;
-
-    socket.emit('join', {name: playerName, boardOrientation, boardSize});
-    landingPage.style.display = 'none';
-    gamePage.style.display = 'block';
-});
-
 document.addEventListener('mousemove', (event) => {
     if(player.playerNumber === currentPlayerNumber) {
         waitIndicator.style.display = 'none';
@@ -129,7 +103,7 @@ function handleTileClick(x, y) {
             ? CURSOR_SHAPES.line[currentCursorShapeIndex]
             : CURSOR_SHAPES[currentCursorKey];
 
-        cursorShape.forEach(dir => {
+        cursorShape?.forEach(dir => {
             const newX = x + dir.dx;
             const newY = y + dir.dy;
             if (isValidTile(newX, newY) && board[newX][newY] !== player.playerNumber) {
@@ -140,7 +114,6 @@ function handleTileClick(x, y) {
         socket.emit('move', {player, selectedTiles, clickedTile: {x, y}});
     }
 }
-
 //#endregion
 
 /* ================================== */
@@ -148,9 +121,15 @@ function handleTileClick(x, y) {
 /* ================================== */
 //#region
 socket.on('initializeBoard', (data) => {
+    console.log('initializeBoard', data);
     board = data.board;
     currentPlayerNumber = data.currentPlayerNumber;
     const players = data.players;
+
+    availableCursors = data.availableCursors || ['singleTile'];
+    currentCursorKey = availableCursors?.[0]; // Default to the first allowed cursor shape
+    currentCursorShapeIndex = 0;
+
     renderBoard();
     updateScores(players);
     updateWinPercentageLabel(data.winPercentage);
@@ -191,16 +170,14 @@ socket.on('updateGame', async (data) => {
 });
 
 socket.on('playerDisconnected', (data) => {
-    board = data.board;
-    players = data.players;
-    currentPlayerNumber = data.currentPlayerNumber;
-    waitingForOpponent = data.waitingForOpponent;
-    lastFlippedTile = null; // to remove lock icon on game reset
-    document.getElementById('opponentColor').style.backgroundColor = 'black';
+    const { hasPassword } = data;
 
-    updateScores(data.players);
-    renderBoard();
-    updateTurnIndicator();
+    if (hasPassword) { // keep game open for player to rejoin
+        alert('Opponent disconnected. Waiting for them to rejoin...');
+    } else { // end game
+        alert('Opponent disconnected. You win!');
+        location.reload();
+    }
 });
 
 socket.on('receiveThemesAndEnums', (data) => {
@@ -233,17 +210,22 @@ socket.on('gameOver', async (data) => {
     setGameOverState(players);
 });
 
+const gameBoard = document.getElementById('board');
+
+gameBoard.addEventListener('wheel', (event) => {
+    event.preventDefault();
+}, { passive: false });
+
 document.addEventListener('wheel', (event) => {
-    if (!waitingForOpponent && player?.playerNumber === currentPlayerNumber) {
+    if (!waitingForOpponent && player.playerNumber === currentPlayerNumber) {
         if (currentHoverX !== null && currentHoverY !== null) {
             clearHoverEffect(currentHoverX, currentHoverY);
 
-            const shapeKeys = Object.keys(CURSOR_SHAPES);
-            const currentIndex = shapeKeys.indexOf(currentCursorKey);
+            const currentIndex = availableCursors?.indexOf(currentCursorKey);
             if (event.deltaY < 0) {
-                currentCursorKey = shapeKeys[(currentIndex + 1) % shapeKeys.length];
+                currentCursorKey = availableCursors[(currentIndex + 1) % availableCursors.length];
             } else {
-                currentCursorKey = shapeKeys[(currentIndex - 1 + shapeKeys.length) % shapeKeys.length];
+                currentCursorKey = availableCursors[(currentIndex - 1 + availableCursors.length) % availableCursors.length];
             }
 
             handleTileHover(currentHoverX, currentHoverY);
@@ -338,15 +320,6 @@ function rotateCursorShape() {
     }
 }
 
-function switchShape(newShapeKey) {
-    currentCursorKey = newShapeKey;
-    currentCursorShapeIndex = 0;
-    if (currentHoverX !== null && currentHoverY !== null) {
-        clearHoverEffect();
-        handleTileHover(currentHoverX, currentHoverY);
-    }
-}
-
 function clearHoverEffect() {
     const hoverClass1 = 'tile-selector-player1';
     const hoverClass2 = 'tile-selector-player2';
@@ -438,7 +411,7 @@ function getCursorShape(opponentCursorShape) {
 }
 
 function applyHoverEffect(x, y, cursorShape, hoverClass, invalidClass) {
-    cursorShape.forEach(({dx, dy}) => {
+    cursorShape?.forEach(({dx, dy}) => {
         const newX = x + dx;
         const newY = y + dy;
         if (isValidTile(newX, newY)) {
