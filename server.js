@@ -104,12 +104,6 @@ function initializeBoard(boardOrientation = 'standard', boardSize = 8) {
 
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
 
-    /* TODO:
-    -fix islands so you need to be connected to your own tiles to add new tiles
-    -change hover to red tinge when hovering over an illegal tile
-    -make each turn more competitive: smaller boards? larger cursors?
-    */
-
     switch (boardOrientation) {
         case 'standard': // Board of neutral tiles
             buildStandardBoard(board, boardSize);
