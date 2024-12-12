@@ -120,18 +120,18 @@ function initializeBoard(boardOrientation = 'standard', boardSize = 8) {
         case 'checkerboard':
             let checkerSize = 2;
             if (boardSize === 4) { // 4x4 board, 2x2 checkerSize
-                winPercentage = 83;
+                winPercentage = 75;
             }
             if (boardSize === 8) { // 8x8 board, 2x2 checkerSize
-                winPercentage = 75;
+                winPercentage = 65;
             }
             if (boardSize === 12) { // 12x12 board, 3x3 checkerSize
                 checkerSize = 3;
-                winPercentage = 75;
+                winPercentage = 70;
             }
             else if (boardSize === 20) { // 20x20 board, 5x5 checkerSize
                 checkerSize = 5;
-                winPercentage = 75;
+                winPercentage = 55;
             }
             buildCheckerboardBoard(board, boardSize, checkerSize);
         break;

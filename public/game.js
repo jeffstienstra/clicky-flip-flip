@@ -537,7 +537,7 @@ function updateScores(players) {
         // Wait for animations to complete before resolving the Promise
         setTimeout(() => {
             resolve();
-        }, 2500); // the FLIP_DURATION. Use the duration of the longest animation
+        }, 2000); // the FLIP_DURATION. Use the duration of the longest animation
     });
 }
 
